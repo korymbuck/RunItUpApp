@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <Group
+      location = "group:App"
+      name = "App">
+      <FileRef
+         location = "container:Podfile">
+      </FileRef>
+      <FileRef
+         location = "container:App.xcodeproj">
+      </FileRef>
+      <FileRef
+         location = "group:Assets.xcassets">
+      </FileRef>
+      <Group
+         location = "group:Base.lproj"
+         name = "Base.lproj">
+         <FileRef
+            location = "group:LaunchScreen.storyboard">
+         </FileRef>
+         <FileRef
+            location = "group:Main.storyboard">
+         </FileRef>
+      </Group>
+      <FileRef
+         location = "group:config.xml">
+      </FileRef>
+      <Group
+         location = "group:public"
+         name = "public">
+         <FileRef
+            location = "group:index.html">
+         </FileRef>
+         <FileRef
+            location = "group:cordova.js">
+         </FileRef>
+         <FileRef
+            location = "group:vite.svg">
+         </FileRef>
+         <Group
+            location = "group:icons"
+            name = "icons">
+            <FileRef
+               location = "group:boot.svg">
+            </FileRef>
+         </Group>
+         <FileRef
+            location = "group:cordova_plugins.js">
+         </FileRef>
+         <Group
+            location = "group:assets"
+            name = "assets">
+            <FileRef
+               location = "group:index-D1WUwHAH.js">
+            </FileRef>
+            <FileRef
+               location = "group:web-CvfcygOG.js">
+            </FileRef>
+            <FileRef
+               location = "group:status-tap-Dmh8yS0e.js">
+            </FileRef>
+            <FileRef
+               location = "group:index-BydKqz7v.js">
+            </FileRef>
+            <FileRef
+               location = "group:input-shims-BpDZWsi1.js">
+            </FileRef>
+            <FileRef
+               location = "group:index-CHojCCTp.css">
+            </FileRef>
+            <FileRef
+               location = "group:focus-visible-supuXXMI.js">
+            </FileRef>
+            <FileRef
+               location = "group:index7-BWJEL5r-.js">
+            </FileRef>
+         </Group>
+      </Group>
+      <FileRef
+         location = "group:capacitor.config.json">
+      </FileRef>
+      <FileRef
+         location = "group:AppDelegate.swift">
+      </FileRef>
+      <FileRef
+         location = "group:Info.plist">
+      </FileRef>
+   </Group>
+</Workspace>
