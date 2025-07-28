@@ -19,7 +19,14 @@ import {
   IonIcon,
   IonProgressBar,
 } from "@ionic/vue";
-import { home, people, logOut, closeCircle, trophy } from "ionicons/icons";
+import {
+  home,
+  people,
+  logOut,
+  closeCircle,
+  trophy,
+  trash,
+} from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
   onAuthStateChanged,
@@ -668,23 +675,27 @@ onMounted(() => {
                     {{ formatTime(run.time, true) }}
                   </p>
                 </ion-label>
+
                 <ion-button
                   slot="end"
                   color="danger"
                   fill="clear"
                   @click="deleteRun(index)"
                 >
-                  Delete
+                  <ion-icon slot="icon-only" :icon="trash"></ion-icon>
                 </ion-button>
               </ion-item>
             </ion-list>
+
             <ion-button
               v-if="visibleRunsCount < runHistory.length"
               @click="showMoreRuns"
               expand="block"
-              fill="clear"
-              >See More</ion-button
+              fill="outline"
+              class="ion-margin-top"
             >
+              See More
+            </ion-button>
           </ion-card-content>
         </ion-card>
       </div>
