@@ -531,7 +531,7 @@ onMounted(() => {
 <template>
   <ion-app>
     <ion-header class="ion-no-border">
-      <ion-toolbar color="dark">
+      <ion-toolbar color="#1e3a8a">
         <ion-title>RunItUp</ion-title>
       </ion-toolbar>
     </ion-header>
