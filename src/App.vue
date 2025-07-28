@@ -139,7 +139,7 @@ function closeAuthModal() {
 }
 
 function formatTime(seconds, includeHours = false) {
-  if (seconds === 0 || isNaN(seconds)) return "00:00";
+  if (!seconds || isNaN(seconds)) return includeHours ? "00:00:00" : "00:00";
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
@@ -255,7 +255,7 @@ async function stopWorkout() {
     };
     try {
       await addDoc(collection(db, "runs"), newRunData);
-      await fetchUserRuns(user.value.uid);
+      await fetchUserRuns(user.value.uid); // This also triggers recalculateStats and updateUserStats
       lastRunSummary.value = newRunData;
       isSummaryModalVisible.value = true;
     } catch (error) {
@@ -267,6 +267,36 @@ async function stopWorkout() {
   currentPace.value = 0;
   lastPosition = null;
   startTime = null;
+}
+
+async function logRun() {
+  if (!user.value) {
+    alert("Please log in.");
+    return;
+  }
+  const dist = parseFloat(distanceInput.value);
+  const timeInSeconds =
+    (parseInt(hoursInput.value) || 0) * 3600 +
+    (parseInt(minutesInput.value) || 0) * 60 +
+    (parseInt(secondsInput.value) || 0);
+  if (dist > 0 && timeInSeconds > 0) {
+    const newRunData = {
+      userId: user.value.uid,
+      date: new Date().toISOString(),
+      distance: dist,
+      time: timeInSeconds,
+      pace: timeInSeconds / dist,
+      timestamp: new Date(),
+    };
+    await addDoc(collection(db, "runs"), newRunData);
+    await fetchUserRuns(user.value.uid); // This also triggers recalculateStats and updateUserStats
+    distanceInput.value = null;
+    hoursInput.value = null;
+    minutesInput.value = null;
+    secondsInput.value = null;
+  } else {
+    alert("Please enter a valid distance and time.");
+  }
 }
 
 async function deleteRun(index) {
@@ -329,35 +359,6 @@ async function handleSignOut() {
   await signOut(auth);
 }
 
-async function logRun() {
-  if (!user.value) {
-    alert("Please log in.");
-    return;
-  }
-  const dist = parseFloat(distanceInput.value);
-  const timeInSeconds =
-    (parseInt(hoursInput.value) || 0) * 3600 +
-    (parseInt(minutesInput.value) || 0) * 60 +
-    (parseInt(secondsInput.value) || 0);
-  if (dist > 0 && timeInSeconds > 0) {
-    await addDoc(collection(db, "runs"), {
-      userId: user.value.uid,
-      date: new Date().toISOString(),
-      distance: dist,
-      time: timeInSeconds,
-      pace: timeInSeconds / dist,
-      timestamp: new Date(),
-    });
-    await fetchUserRuns(user.value.uid);
-    distanceInput.value = null;
-    hoursInput.value = null;
-    minutesInput.value = null;
-    secondsInput.value = null;
-  } else {
-    alert("Please enter a valid distance and time.");
-  }
-}
-
 async function addFriend() {
   if (!friendUsername.value) {
     alert("Please enter a username.");
@@ -416,6 +417,7 @@ async function fetchUserRuns(userId) {
 async function updateUserStatsInFirestore() {
   if (!user.value) return;
   try {
+    const lastRun = runHistory.value.length > 0 ? runHistory.value[0] : null;
     const userStatsDocRef = doc(db, "userStats", user.value.uid);
     await setDoc(
       userStatsDocRef,
@@ -423,6 +425,14 @@ async function updateUserStatsInFirestore() {
         totalDistance: totalDistance.value,
         totalTime: totalTime.value,
         xp: xp.value,
+        lastRun: lastRun
+          ? {
+              distance: lastRun.distance,
+              time: lastRun.time,
+              pace: lastRun.pace,
+              date: lastRun.date,
+            }
+          : null,
       },
       { merge: true }
     );
@@ -467,6 +477,7 @@ function setupSocialListeners() {
             totalDistance: 0,
             totalTime: 0,
             xp: 0,
+            lastRun: null,
           };
           const existingFriendIndex = friends.value.findIndex(
             (f) => f.uid === friendUid
@@ -519,12 +530,14 @@ onMounted(() => {
 
 <template>
   <ion-app>
+    <ion-header class="ion-no-border">
+      <ion-toolbar color="dark">
+        <ion-title>RunItUp</ion-title>
+      </ion-toolbar>
+    </ion-header>
+
     <ion-content :fullscreen="true">
-      <div
-        v-if="user"
-        class="ion-text-center ion-margin-bottom"
-        style="margin-top: 1rem"
-      >
+      <div v-if="user" class="ion-text-center ion-margin-bottom">
         <img
           src="/icons/boot.svg"
           alt="RunItUp Logo"
@@ -556,7 +569,6 @@ onMounted(() => {
               <p class="stat-label">XP</p>
               <p class="stat-value">{{ Math.floor(animatedXp) }}</p>
             </div>
-
             <div class="ion-margin-top">
               <div class="level-display">
                 <span class="level-emoji">{{ currentLevel.emoji }}</span>
@@ -666,36 +678,52 @@ onMounted(() => {
             <ion-card-title>Run History</ion-card-title>
           </ion-card-header>
           <ion-card-content>
-            <ion-list lines="full">
-              <ion-item v-for="(run, index) in displayedRuns" :key="run.id">
-                <ion-label>
-                  <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
-                  <p>
-                    {{ run.distance.toFixed(2) }} miles in
-                    {{ formatTime(run.time, true) }}
-                  </p>
-                </ion-label>
-
-                <ion-button
-                  slot="end"
-                  color="danger"
-                  fill="clear"
-                  @click="deleteRun(index)"
-                >
-                  <ion-icon slot="icon-only" :icon="trash"></ion-icon>
-                </ion-button>
-              </ion-item>
+            <ion-list lines="none">
+              <div
+                v-for="(run, index) in displayedRuns"
+                :key="run.id"
+                class="run-history-item"
+              >
+                <div class="run-history-header">
+                  <span>{{ new Date(run.date).toLocaleDateString() }}</span>
+                  <ion-button
+                    fill="clear"
+                    color="danger"
+                    size="small"
+                    @click="deleteRun(index)"
+                  >
+                    <ion-icon slot="icon-only" :icon="trash"></ion-icon>
+                  </ion-button>
+                </div>
+                <div class="run-history-stats">
+                  <div>
+                    <p class="stat-label">Distance</p>
+                    <p class="stat-value small">
+                      {{ run.distance.toFixed(2) }}
+                      <span class="stat-unit">mi</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p class="stat-label">Time</p>
+                    <p class="stat-value small">
+                      {{ formatTime(run.time, true) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="stat-label">Avg Pace</p>
+                    <p class="stat-value small">{{ formatTime(run.pace) }}</p>
+                  </div>
+                </div>
+              </div>
             </ion-list>
-
             <ion-button
               v-if="visibleRunsCount < runHistory.length"
               @click="showMoreRuns"
               expand="block"
               fill="outline"
               class="ion-margin-top"
+              >See More</ion-button
             >
-              See More
-            </ion-button>
           </ion-card-content>
         </ion-card>
       </div>
@@ -708,44 +736,75 @@ onMounted(() => {
           color="primary"
           >Follow a New User</ion-button
         >
-        <ion-card class="styled-card">
+        <ion-card class="styled-card" v-if="friends.length > 0">
           <ion-card-header>
             <ion-card-title>Following</ion-card-title>
           </ion-card-header>
           <ion-card-content>
-            <ion-list v-if="friends.length > 0" lines="full">
-              <ion-item v-for="friend in friends" :key="friend.uid">
-                <ion-label>
-                  <h2>{{ friend.displayName }}</h2>
-                  <p>
-                    Total Distance:
-                    {{
-                      friend.stats ? friend.stats.totalDistance.toFixed(2) : 0
-                    }}
-                    miles
-                  </p>
-                  <p>
-                    Total Time:
-                    {{
-                      friend.stats
-                        ? formatTime(friend.stats.totalTime, true)
-                        : "00:00:00"
-                    }}
-                  </p>
-                </ion-label>
+            <div
+              v-for="friend in friends"
+              :key="friend.uid"
+              class="friend-card"
+            >
+              <div class="friend-header">
+                <h2>{{ friend.displayName }}</h2>
                 <ion-button
-                  slot="end"
                   color="danger"
+                  size="small"
                   @click="unfollowUser(friend)"
                   >Unfollow</ion-button
                 >
-              </ion-item>
-            </ion-list>
-            <p v-else class="ion-text-center ion-padding">
-              You aren't following anyone yet.
-            </p>
+              </div>
+              <div
+                v-if="friend.stats && friend.stats.lastRun"
+                class="run-history-item mini"
+              >
+                <p class="ion-text-center"><small>LATEST RUN</small></p>
+                <div class="run-history-stats">
+                  <div>
+                    <p class="stat-label">Distance</p>
+                    <p class="stat-value small">
+                      {{ friend.stats.lastRun.distance.toFixed(2) }}
+                      <span class="stat-unit">mi</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p class="stat-label">Time</p>
+                    <p class="stat-value small">
+                      {{ formatTime(friend.stats.lastRun.time, true) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="stat-label">Avg Pace</p>
+                    <p class="stat-value small">
+                      {{ formatTime(friend.stats.lastRun.pace) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="friend-total-stats">
+                <p>
+                  <strong>Total Distance:</strong>
+                  {{
+                    friend.stats ? friend.stats.totalDistance.toFixed(2) : 0
+                  }}
+                  miles
+                </p>
+                <p>
+                  <strong>Total Time:</strong>
+                  {{
+                    friend.stats
+                      ? formatTime(friend.stats.totalTime, true)
+                      : "00:00:00"
+                  }}
+                </p>
+              </div>
+            </div>
           </ion-card-content>
         </ion-card>
+        <p v-else class="ion-text-center ion-padding">
+          You aren't following anyone yet.
+        </p>
       </div>
 
       <div v-if="user" class="footer-tabs">
@@ -753,19 +812,16 @@ onMounted(() => {
           @click="currentPage = 'home'"
           :class="{ active: currentPage === 'home' }"
         >
-          <ion-icon :icon="home"></ion-icon>
-          <ion-label>Home</ion-label>
+          <ion-icon :icon="home"></ion-icon><ion-label>Home</ion-label>
         </button>
         <button
           @click="currentPage = 'social'"
           :class="{ active: currentPage === 'social' }"
         >
-          <ion-icon :icon="people"></ion-icon>
-          <ion-label>Social</ion-label>
+          <ion-icon :icon="people"></ion-icon><ion-label>Social</ion-label>
         </button>
         <button @click="handleSignOut">
-          <ion-icon :icon="logOut"></ion-icon>
-          <ion-label>Sign Out</ion-label>
+          <ion-icon :icon="logOut"></ion-icon><ion-label>Sign Out</ion-label>
         </button>
       </div>
     </ion-content>
@@ -774,22 +830,21 @@ onMounted(() => {
       :is-open="isAuthModalVisible"
       :backdrop-dismiss="false"
       class="auth-modal"
-    >
-      <ion-content class="ion-padding">
-        <h2 class="ion-text-center">Account</h2>
+      ><ion-content class="ion-padding"
+        ><h2 class="ion-text-center">Account</h2>
         <div class="input-group ion-margin-top">
           <ion-input
             class="styled-input"
             placeholder="Username"
             v-model="displayName"
-          ></ion-input>
-          <ion-input
+          ></ion-input
+          ><ion-input
             class="styled-input"
             placeholder="Email"
             type="email"
             v-model="email"
-          ></ion-input>
-          <ion-input
+          ></ion-input
+          ><ion-input
             class="styled-input"
             placeholder="Password"
             type="password"
@@ -802,8 +857,7 @@ onMounted(() => {
           class="ion-margin-top"
           color="primary"
           >Sign In</ion-button
-        >
-        <ion-button expand="block" @click="handleSignUp" color="success"
+        ><ion-button expand="block" @click="handleSignUp" color="success"
           >Sign Up</ion-button
         >
         <p
@@ -812,82 +866,75 @@ onMounted(() => {
           style="color: var(--ion-color-warning)"
         >
           {{ authMessage }}
-        </p>
-      </ion-content>
-    </ion-modal>
-
+        </p></ion-content
+      ></ion-modal
+    >
     <ion-modal
       :is-open="isFollowModalVisible"
       @didDismiss="closeFollowModal()"
       class="auth-modal"
-    >
-      <ion-header>
-        <ion-toolbar>
-          <ion-title>Follow a User</ion-title>
-          <ion-button slot="end" fill="clear" @click="closeFollowModal()">
-            <ion-icon :icon="closeCircle"></ion-icon>
-          </ion-button>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content class="ion-padding">
-        <ion-input
+      ><ion-header
+        ><ion-toolbar color="dark"
+          ><ion-title>Follow a User</ion-title
+          ><ion-button slot="end" fill="clear" @click="closeFollowModal()"
+            ><ion-icon
+              :icon="closeCircle"
+            ></ion-icon></ion-button></ion-toolbar></ion-header
+      ><ion-content class="ion-padding"
+        ><ion-input
           class="styled-input"
           placeholder="Username"
           v-model="friendUsername"
-        ></ion-input>
-        <ion-button
+        ></ion-input
+        ><ion-button
           expand="block"
           @click="addFriend"
           class="ion-margin-top"
           color="success"
           >Follow User</ion-button
-        >
-      </ion-content>
-    </ion-modal>
-
+        ></ion-content
+      ></ion-modal
+    >
     <ion-modal
       :is-open="isSummaryModalVisible"
       @didDismiss="isSummaryModalVisible = false"
-    >
-      <ion-header>
-        <ion-toolbar>
-          <ion-title>Run Summary</ion-title>
-          <ion-button
+      ><ion-header
+        ><ion-toolbar color="dark"
+          ><ion-title>Run Summary</ion-title
+          ><ion-button
             slot="end"
             fill="clear"
             @click="isSummaryModalVisible = false"
-          >
-            <ion-icon :icon="closeCircle"></ion-icon>
-          </ion-button>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content class="ion-padding">
-        <div v-if="lastRunSummary">
+            ><ion-icon
+              :icon="closeCircle"
+            ></ion-icon></ion-button></ion-toolbar></ion-header
+      ><ion-content class="ion-padding"
+        ><div v-if="lastRunSummary">
           <RunMap
             :route="lastRunSummary.route"
             v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
-          />
-          <ion-card-header class="ion-text-center">
-            <ion-card-title
+          /><ion-card-header class="ion-text-center"
+            ><ion-card-title
               color="warning"
               style="font-size: 2.5rem; font-weight: 700"
-            >
-              {{ lastRunSummary.distance.toFixed(2) }} miles
-            </ion-card-title>
-          </ion-card-header>
-          <ion-list lines="none" class="ion-margin-top">
-            <ion-item>
-              <ion-label>Time</ion-label>
-              <p slot="end">{{ formatTime(lastRunSummary.time, true) }}</p>
-            </ion-item>
-            <ion-item>
-              <ion-label>Avg. Pace</ion-label>
-              <p slot="end">{{ formatTime(lastRunSummary.pace) }} / mile</p>
-            </ion-item>
-          </ion-list>
-        </div>
-      </ion-content>
-    </ion-modal>
+              >{{ lastRunSummary.distance.toFixed(2) }} miles</ion-card-title
+            ></ion-card-header
+          ><ion-list lines="none" class="ion-margin-top"
+            ><ion-item
+              ><ion-label>Time</ion-label>
+              <p slot="end">
+                {{ formatTime(lastRunSummary.time, true) }}
+              </p></ion-item
+            ><ion-item
+              ><ion-label>Avg. Pace</ion-label>
+              <p slot="end">
+                {{ formatTime(lastRunSummary.pace) }} / mile
+              </p></ion-item
+            ></ion-list
+          >
+        </div></ion-content
+      ></ion-modal
+    >
   </ion-app>
 </template>
 
@@ -946,6 +993,9 @@ onMounted(() => {
   font-weight: 700;
   line-height: 1.1;
 }
+.stat-value.small {
+  font-size: 1.5rem;
+}
 .stat-unit {
   font-size: 1.25rem;
   font-weight: 400;
@@ -957,7 +1007,6 @@ onMounted(() => {
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #ffffff;
 }
 .level-emoji {
   font-size: 1.5rem;
@@ -967,8 +1016,6 @@ onMounted(() => {
   color: #d1d5db;
   margin-top: 0.5rem;
 }
-
-/* Updated Footer Styles */
 .footer-tabs {
   position: fixed;
   bottom: 0;
@@ -976,7 +1023,7 @@ onMounted(() => {
   right: 0;
   width: 100%;
   height: 65px;
-  background: rgba(0, 0, 0, 0.2); /* Restored transparent background */
+  background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   display: flex;
@@ -1033,5 +1080,54 @@ ion-content {
   font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
+}
+.run-history-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.run-history-item:last-child {
+  border-bottom: none;
+}
+.run-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.run-history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+}
+.friend-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.friend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.friend-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.friend-total-stats {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+.run-history-item.mini {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+.run-history-item.mini .stat-value.small {
+  font-size: 1.2rem;
 }
 </style>
