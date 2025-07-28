@@ -17,6 +17,11 @@ body {
   --ion-color-medium: #d1d5db;
 }
 
+ion-toolbar {
+  --background: var(--ion-background-color);
+  --border-width: 0px; /* Removes the bottom border */
+}
+
 /* Custom Card Styles */
 ion-card {
   --background: transparent;
