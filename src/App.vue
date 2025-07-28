@@ -937,6 +937,10 @@ onMounted(() => {
 </template>
 
 <style scoped>
+ion-header ion-toolbar {
+  --background: #1e3a8a;
+}
+
 .welcome-text {
   font-size: 1.2rem;
   font-weight: 600;
