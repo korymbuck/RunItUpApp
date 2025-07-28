@@ -18,8 +18,16 @@ body {
 }
 
 ion-toolbar {
-  --background: var(--ion-background-color);
-  --border-width: 0px; /* Removes the bottom border */
+  --background: rgba(
+    0,
+    0,
+    0,
+    0.2
+  ); /* Semi-transparent background like the footer */
+  --border-width: 0px; /* Remove default border */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Add our custom border */
 }
 
 /* Custom Card Styles */
