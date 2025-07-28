@@ -1025,7 +1025,7 @@ ion-header ion-toolbar {
   left: 0;
   right: 0;
   width: 100%;
-  height: 65px;
+  height: 75px; /* Increased from 65px */
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -1042,14 +1042,14 @@ ion-header ion-toolbar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px; /* Increased from 10px */
   transition: color 0.2s;
 }
 .footer-tabs button.active {
   color: #fbbf24;
 }
 .footer-tabs ion-icon {
-  font-size: 24px;
+  font-size: 26px; /* Increased from 24px */
   margin-bottom: 2px;
 }
 ion-content {
