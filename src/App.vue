@@ -685,7 +685,7 @@ onMounted(() => {
                 class="run-history-item"
               >
                 <div class="run-history-header">
-                  <span>{{ new Date(run.date).toLocaleDateString() }}</span>
+                  <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
                   <ion-button
                     fill="clear"
                     color="danger"
@@ -785,9 +785,7 @@ onMounted(() => {
               <div class="friend-total-stats">
                 <p>
                   <strong>Total Distance:</strong>
-                  {{
-                    friend.stats ? friend.stats.totalDistance.toFixed(2) : 0
-                  }}
+                  {{ friend.stats ? friend.stats.totalDistance.toFixed(2) : 0 }}
                   miles
                 </p>
                 <p>
@@ -1007,6 +1005,7 @@ onMounted(() => {
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
+  color: #fbbf24;
 }
 .level-emoji {
   font-size: 1.5rem;
@@ -1082,7 +1081,8 @@ ion-content {
   color: #fff;
 }
 .run-history-item {
-  padding: 0.5rem 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .run-history-item:last-child {
@@ -1113,9 +1113,16 @@ ion-content {
   padding-bottom: 0.5rem;
   margin-bottom: 0.5rem;
 }
+
+.run-history-item h2,
+.friend-card h2 {
+  font-weight: 600;
+  color: #fbbf24;
+}
 .friend-header h2 {
   font-size: 1.25rem;
   font-weight: 600;
+  color: #fbbf24;
 }
 .friend-total-stats {
   margin-top: 1rem;
