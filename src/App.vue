@@ -870,7 +870,7 @@ onMounted(() => {
       @didDismiss="closeFollowModal()"
       class="auth-modal"
       ><ion-header
-        ><ion-toolbar color="dark"
+        ><ion-toolbar color="#1e3a8a"
           ><ion-title>Follow a User</ion-title
           ><ion-button slot="end" fill="clear" @click="closeFollowModal()"
             ><ion-icon
