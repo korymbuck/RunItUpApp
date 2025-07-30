@@ -569,6 +569,7 @@ onMounted(() => {
               <p class="stat-label">XP</p>
               <p class="stat-value">{{ Math.floor(animatedXp) }}</p>
             </div>
+
             <div class="ion-margin-top">
               <div class="level-display">
                 <span class="level-emoji">{{ currentLevel.emoji }}</span>
@@ -581,11 +582,8 @@ onMounted(() => {
               ></ion-progress-bar>
               <p class="xp-text">
                 {{ Math.floor(xp) }} /
-                {{ currentLevel.xp === Infinity ? "∞" : currentLevel.xp }} XP{{
-                  nextLevel.name !== currentLevel.name
-                    ? ` to ${nextLevel.emoji} ${nextLevel.name}`
-                    : ""
-                }}
+                {{ currentLevel.xp === Infinity ? "∞" : currentLevel.xp }} XP to
+                {{ nextLevel.name }}
               </p>
             </div>
           </ion-card-content>
@@ -896,43 +894,50 @@ onMounted(() => {
     <ion-modal
       :is-open="isSummaryModalVisible"
       @didDismiss="isSummaryModalVisible = false"
-      ><ion-header
-        ><ion-toolbar color="dark"
-          ><ion-title>Run Summary</ion-title
-          ><ion-button
+    >
+      <ion-header>
+        <ion-toolbar color="dark">
+          <ion-title>Run Summary</ion-title>
+          <ion-button
             slot="end"
             fill="clear"
             @click="isSummaryModalVisible = false"
-            ><ion-icon
-              :icon="closeCircle"
-            ></ion-icon></ion-button></ion-toolbar></ion-header
-      ><ion-content class="ion-padding"
-        ><div v-if="lastRunSummary">
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div v-if="lastRunSummary">
           <RunMap
             :route="lastRunSummary.route"
             v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
-          /><ion-card-header class="ion-text-center"
-            ><ion-card-title
-              color="warning"
-              style="font-size: 2.5rem; font-weight: 700"
-              >{{ lastRunSummary.distance.toFixed(2) }} miles</ion-card-title
-            ></ion-card-header
-          ><ion-list lines="none" class="ion-margin-top"
-            ><ion-item
-              ><ion-label>Time</ion-label>
-              <p slot="end">
+          />
+          <div class="ion-text-center ion-margin-top">
+            <div class="stat-item">
+              <p class="stat-label">Distance</p>
+              <p class="stat-value">
+                {{ lastRunSummary.distance.toFixed(2) }}
+                <span class="stat-unit">miles</span>
+              </p>
+            </div>
+            <div class="stat-item">
+              <p class="stat-label">Time</p>
+              <p class="stat-value">
                 {{ formatTime(lastRunSummary.time, true) }}
-              </p></ion-item
-            ><ion-item
-              ><ion-label>Avg. Pace</ion-label>
-              <p slot="end">
-                {{ formatTime(lastRunSummary.pace) }} / mile
-              </p></ion-item
-            ></ion-list
-          >
-        </div></ion-content
-      ></ion-modal
-    >
+              </p>
+            </div>
+            <div class="stat-item">
+              <p class="stat-label">Avg. Pace</p>
+              <p class="stat-value">
+                {{ formatTime(lastRunSummary.pace) }}
+                <span class="stat-unit">/ mile</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </ion-content>
+    </ion-modal>
   </ion-app>
 </template>
 
@@ -1053,7 +1058,7 @@ ion-header ion-toolbar {
   margin-bottom: 2px;
 }
 ion-content {
-  --padding-bottom: 70px;
+  --padding-bottom: 80px;
 }
 .auth-modal ion-content {
   --background: #1e3a8a;
