@@ -13,6 +13,7 @@
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@capacitor/google-maps": "^7.0.3",
+    "@capacitor/haptics": "^7.0.1",
     "@capacitor/ios": "^7.4.2",
     "@ionic/vue": "^8.6.5",
     "gsap": "^3.13.0",
