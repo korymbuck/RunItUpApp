@@ -271,7 +271,14 @@ async function stopWorkout() {
     };
     try {
       await addDoc(collection(db, "runs"), newRunData);
-      await fetchUserRuns(user.value.uid); // This also triggers recalculateStats and updateUserStats
+      await fetchUserRuns(user.value.uid);
+      // --- TEMPORARY DEBUGGING ALERT ---
+      alert(
+        `About to show summary. Route points: ${
+          newRunData.route.length
+        }, Distance: ${newRunData.distance.toFixed(2)}`
+      );
+      // ------------------------------------
       lastRunSummary.value = newRunData;
       isSummaryModalVisible.value = true;
     } catch (error) {
