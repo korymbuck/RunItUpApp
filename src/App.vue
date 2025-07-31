@@ -26,6 +26,7 @@ import {
   closeCircle,
   trophy,
   trash,
+  personCircle,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -48,7 +49,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { gsap } from "gsap";
 import RunMap from "./components/RunMap.vue";
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { storage } from "./firebase-config.js";
 
 // --- STATE ---
 const levels = [
@@ -99,6 +106,9 @@ let timerInterval = null;
 const routeCoordinates = ref([]);
 const isSummaryModalVisible = ref(false);
 const lastRunSummary = ref(null);
+const photoURL = ref(null);
+const newDisplayName = ref("");
+const fileInput = ref(null);
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -188,8 +198,9 @@ function animateStat(statName, startValue, endValue) {
 
 // --- WORKOUT METHODS ---
 function startWorkout() {
-  Haptics.impact({ style: ImpactStyle.Light });
-  if ("vibrate" in navigator) navigator.vibrate(50);
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
   if (!isTracking.value && navigator.geolocation) {
     isTracking.value = true;
     startTime = Date.now();
@@ -233,8 +244,9 @@ function startWorkout() {
 }
 
 async function stopWorkout() {
-  Haptics.impact({ style: ImpactStyle.Light });
-  if ("vibrate" in navigator) navigator.vibrate(50);
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
   clearInterval(timerInterval);
   if (watchId) {
     navigator.geolocation.clearWatch(watchId);
@@ -273,7 +285,9 @@ async function stopWorkout() {
 }
 
 async function logRun() {
-  Haptics.impact({ style: ImpactStyle.Light });
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
   if (!user.value) {
     alert("Please log in.");
     return;
@@ -304,7 +318,9 @@ async function logRun() {
 }
 
 async function deleteRun(index) {
-  Haptics.impact({ style: ImpactStyle.Light });
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
   if (!user.value) {
     alert("Please log in to delete runs.");
     return;
@@ -505,6 +521,82 @@ function setupSocialListeners() {
   });
 }
 
+function triggerFileUpload() {
+  fileInput.value.click();
+}
+
+// Replace the old handlePictureUpload with this one
+async function handlePictureUpload(event) {
+  const file = event.target.files[0];
+  if (!file || !user.value) return;
+
+  const filePath = `profile-pictures/${user.value.uid}`;
+  const fileRef = storageRef(storage, filePath);
+
+  try {
+    // Upload the file to Firebase Storage
+    await uploadBytes(fileRef, file);
+
+    // Get the public URL for the image
+    const url = await getDownloadURL(fileRef);
+
+    // Save that URL to the user's profile in Firestore
+    await setDoc(
+      doc(db, "users", user.value.uid),
+      { photoURL: url },
+      { merge: true }
+    );
+
+    // Update the picture in the app instantly
+    photoURL.value = url;
+    alert("Profile picture updated!");
+  } catch (error) {
+    console.error("Error uploading picture:", error);
+    alert("Failed to upload picture.");
+  }
+}
+
+// Replace the old updateUsername with this one
+async function updateUsername() {
+  const newName = newDisplayName.value.trim();
+  if (!newName || newName === displayName.value) {
+    return; // Do nothing if name is empty or unchanged
+  }
+
+  // Check if the new username is already taken by another user
+  const usersRef = collection(db, "users");
+  const q = query(
+    usersRef,
+    where("displayName_lowercase", "==", newName.toLowerCase())
+  );
+  const querySnapshot = await getDocs(q);
+
+  if (!querySnapshot.empty) {
+    alert("This username is already taken. Please choose another.");
+    return;
+  }
+
+  // If it's unique, update the document
+  try {
+    const userDocRef = doc(db, "users", user.value.uid);
+    await setDoc(
+      userDocRef,
+      {
+        displayName: newName,
+        displayName_lowercase: newName.toLowerCase(),
+      },
+      { merge: true }
+    );
+
+    displayName.value = newName; // Update the name in the app
+    newDisplayName.value = ""; // Clear the input field
+    alert("Username updated successfully!");
+  } catch (error) {
+    console.error("Error updating username:", error);
+    alert("Failed to update username.");
+  }
+}
+
 // --- ON MOUNTED ---
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
@@ -513,6 +605,7 @@ onMounted(() => {
       const userDoc = await getDoc(doc(db, "users", authUser.uid));
       if (userDoc.exists()) {
         displayName.value = userDoc.data().displayName;
+        photoURL.value = userDoc.data().photoURL;
       }
       closeAuthModal();
       await fetchUserRuns(authUser.uid);
@@ -520,6 +613,7 @@ onMounted(() => {
     } else {
       user.value = null;
       displayName.value = "";
+      photoURL.value = null;
       runHistory.value = [];
       friends.value = [];
       recalculateStatsFromHistory();
@@ -542,6 +636,11 @@ onMounted(() => {
     </ion-header>
 
     <ion-content :fullscreen="true">
+      <img
+        v-if="photoURL && currentPage === 'home'"
+        :src="photoURL"
+        class="page-avatar"
+      />
       <div v-if="user" class="ion-text-center ion-margin-bottom">
         <img
           src="/icons/boot.svg"
@@ -734,6 +833,7 @@ onMounted(() => {
       </Transition>
       <Transition name="fade">
         <div v-if="currentPage === 'social'" class="ion-padding">
+          <img v-if="photoURL" :src="photoURL" class="page-avatar" />
           <ion-button
             expand="block"
             @click="openFollowModal"
@@ -812,6 +912,55 @@ onMounted(() => {
           </p>
         </div>
       </Transition>
+      <Transition name="fade">
+        <div v-if="currentPage === 'profile'" class="ion-padding">
+          <ion-card class="styled-card">
+            <ion-card-header>
+              <ion-card-title class="ion-text-center"
+                >Your Profile</ion-card-title
+              >
+            </ion-card-header>
+            <ion-card-content class="ion-text-center">
+              <img
+                :src="photoURL || '/default-avatar.png'"
+                class="profile-picture"
+                @click="triggerFileUpload"
+              />
+              <input
+                type="file"
+                @change="handlePictureUpload"
+                ref="fileInput"
+                style="display: none"
+                accept="image/*"
+              />
+              <p><small>Tap picture to change</small></p>
+
+              <div class="ion-margin-top">
+                <ion-input
+                  class="styled-input"
+                  placeholder="Enter new username"
+                  v-model="newDisplayName"
+                ></ion-input>
+                <ion-button
+                  expand="block"
+                  @click="updateUsername"
+                  color="primary"
+                  class="ion-margin-top"
+                  >Save Username</ion-button
+                >
+              </div>
+
+              <ion-button
+                expand="block"
+                @click="handleSignOut"
+                color="danger"
+                class="ion-margin-top"
+                >Sign Out</ion-button
+              >
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </Transition>
       <div v-if="user" class="footer-tabs">
         <button
           @click="currentPage = 'home'"
@@ -825,8 +974,12 @@ onMounted(() => {
         >
           <ion-icon :icon="people"></ion-icon><ion-label>Social</ion-label>
         </button>
-        <button @click="handleSignOut">
-          <ion-icon :icon="logOut"></ion-icon><ion-label>Sign Out</ion-label>
+        <button
+          @click="currentPage = 'profile'"
+          :class="{ active: currentPage === 'profile' }"
+        >
+          <ion-icon :icon="personCircle"></ion-icon
+          ><ion-label>Profile</ion-label>
         </button>
       </div>
     </ion-content>
@@ -1163,5 +1316,26 @@ ion-content {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0.3;
+}
+.profile-picture {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--ion-color-primary);
+  margin: auto;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+.page-avatar {
+  position: absolute;
+  top: 65px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--ion-color-primary);
+  z-index: 10;
+  object-fit: cover;
 }
 </style>
