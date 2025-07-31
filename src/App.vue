@@ -48,7 +48,8 @@ import {
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { gsap } from "gsap";
-import RunMap from "./components/RunMap.vue";
+import { GoogleMap } from "@capacitor/google-maps";
+import { nextTick, watch } from "vue";
 import {
   getStorage,
   ref as storageRef,
@@ -110,6 +111,8 @@ const photoURL = ref(null);
 const newDisplayName = ref("");
 const fileInput = ref(null);
 const showMap = ref(false);
+const mapRef = ref(null);
+let map = null;
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -272,13 +275,6 @@ async function stopWorkout() {
     try {
       await addDoc(collection(db, "runs"), newRunData);
       await fetchUserRuns(user.value.uid);
-      // --- TEMPORARY DEBUGGING ALERT ---
-      alert(
-        `About to show summary. Route points: ${
-          newRunData.route.length
-        }, Distance: ${newRunData.distance.toFixed(2)}`
-      );
-      // ------------------------------------
       lastRunSummary.value = newRunData;
       isSummaryModalVisible.value = true;
     } catch (error) {
@@ -344,6 +340,46 @@ async function deleteRun(index) {
     }
   }
 }
+
+// --- MAP LOGIC ---
+watch(isSummaryModalVisible, async (isVisible) => {
+  if (isVisible && lastRunSummary.value?.route?.length > 0) {
+    await nextTick();
+    if (mapRef.value) {
+      try {
+        map = await GoogleMap.create({
+          id: "run-summary-map",
+          element: mapRef.value,
+          apiKey: "AIzaSyCH2eT6rpZ9FcGnSwRm0G7bg8w-8cXRGmw",
+          config: {
+            center: {
+              lat: lastRunSummary.value.route[0].lat,
+              lng: lastRunSummary.value.route[0].lng,
+            },
+            zoom: 16,
+            disableDefaultUI: true,
+          },
+        });
+        if (lastRunSummary.value.route.length > 1) {
+          await map.addPolyline({
+            path: lastRunSummary.value.route,
+            strokeColor: "#3B82F6",
+            strokeWeight: 5,
+          });
+          await map.moveCamera({
+            target: lastRunSummary.value.route,
+            padding: 40,
+          });
+        }
+      } catch (e) {
+        console.error("Error creating map", e);
+      }
+    }
+  } else if (!isVisible && map) {
+    await map.destroy();
+    map = null;
+  }
+});
 
 // --- FIREBASE METHODS ---
 async function handleSignIn() {
@@ -1101,12 +1137,15 @@ onMounted(() => {
       </ion-header>
       <ion-content class="ion-padding">
         <div v-if="lastRunSummary">
-          <RunMap
-            :route="lastRunSummary.route"
-            v-if="
-              showMap && lastRunSummary.route && lastRunSummary.route.length > 0
+          <capacitor-google-map
+            ref="mapRef"
+            style="
+              display: block;
+              height: 300px;
+              width: 100%;
+              border-radius: 10px;
             "
-          />
+          ></capacitor-google-map>
 
           <div class="ion-text-center ion-margin-top">
             <div class="stat-item">
