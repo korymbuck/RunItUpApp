@@ -491,6 +491,7 @@ function setupSocialListeners() {
     snapshot.docChanges().forEach((change) => {
       const friendUid = change.doc.id;
       const friendData = change.doc.data();
+
       if (change.type === "added") {
         const statsDocRef = doc(db, "userStats", friendUid);
         onSnapshot(statsDocRef, (statsDoc) => {
@@ -513,7 +514,19 @@ function setupSocialListeners() {
             });
           }
         });
+
+        const userDocRef = doc(db, "users", friendUid);
+        onSnapshot(userDocRef, (userDoc) => {
+          const userData = userDoc.data();
+          const existingFriendIndex = friends.value.findIndex(
+            (f) => f.uid === friendUid
+          );
+          if (existingFriendIndex > -1) {
+            friends.value[existingFriendIndex].photoURL = userData.photoURL;
+          }
+        });
       }
+
       if (change.type === "removed") {
         friends.value = friends.value.filter((f) => f.uid !== friendUid);
       }
@@ -852,7 +865,13 @@ onMounted(() => {
                 class="friend-card"
               >
                 <div class="friend-header">
-                  <h2>{{ friend.displayName }}</h2>
+                  <div class="friend-identity">
+                    <img
+                      :src="friend.photoURL || '/default-avatar.png'"
+                      class="friend-avatar"
+                    />
+                    <h2>{{ friend.displayName }}</h2>
+                  </div>
                   <ion-button
                     color="danger"
                     size="small"
@@ -860,6 +879,7 @@ onMounted(() => {
                     >Unfollow</ion-button
                   >
                 </div>
+
                 <div
                   v-if="friend.stats && friend.stats.lastRun"
                   class="run-history-item mini"
@@ -1308,14 +1328,20 @@ ion-content {
 .run-history-item.mini .stat-value.small {
   font-size: 1.2rem;
 }
+/* This controls the animation timing */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: all 0.25s ease-out;
 }
 
-.fade-enter-from,
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+}
+
 .fade-leave-to {
-  opacity: 0.3;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
 }
 .profile-picture {
   width: 120px;
@@ -1336,6 +1362,18 @@ ion-content {
   border-radius: 50%;
   border: 2px solid var(--ion-color-primary);
   z-index: 10;
+  object-fit: cover;
+}
+.friend-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Space between avatar and name */
+}
+
+.friend-avatar {
+  width: 30px; /* Smaller size */
+  height: 30px; /* Smaller size */
+  border-radius: 50%;
   object-fit: cover;
 }
 </style>
