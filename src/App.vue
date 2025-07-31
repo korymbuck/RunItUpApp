@@ -109,6 +109,7 @@ const lastRunSummary = ref(null);
 const photoURL = ref(null);
 const newDisplayName = ref("");
 const fileInput = ref(null);
+const showMap = ref(false);
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -1076,6 +1077,8 @@ onMounted(() => {
     <ion-modal
       :is-open="isSummaryModalVisible"
       @didDismiss="isSummaryModalVisible = false"
+      @ionModalDidPresent="showMap = true"
+      @ionModalWillDismiss="showMap = false"
     >
       <ion-header>
         <ion-toolbar color="dark">
@@ -1093,8 +1096,11 @@ onMounted(() => {
         <div v-if="lastRunSummary">
           <RunMap
             :route="lastRunSummary.route"
-            v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
+            v-if="
+              showMap && lastRunSummary.route && lastRunSummary.route.length > 0
+            "
           />
+
           <div class="ion-text-center ion-margin-top">
             <div class="stat-item">
               <p class="stat-label">Distance</p>
@@ -1367,12 +1373,12 @@ ion-content {
 .friend-identity {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Space between avatar and name */
+  gap: 0.75rem;
 }
 
 .friend-avatar {
-  width: 30px; /* Smaller size */
-  height: 30px; /* Smaller size */
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
 }
