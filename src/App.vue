@@ -344,13 +344,14 @@ async function deleteRun(index) {
 // --- MAP LOGIC ---
 watch(isSummaryModalVisible, async (isVisible) => {
   if (isVisible && lastRunSummary.value?.route?.length > 0) {
+    // Use nextTick to ensure the DOM element is available
     await nextTick();
     if (mapRef.value) {
       try {
         map = await GoogleMap.create({
-          id: "run-summary-map",
+          id: "run-summary-map-" + Date.now(),
           element: mapRef.value,
-          apiKey: "AIzaSyCH2eT6rpZ9FcGnSwRm0G7bg8w-8cXRGmw",
+          apiKey: "YOUR_API_KEY_HERE", // Paste your key here
           config: {
             center: {
               lat: lastRunSummary.value.route[0].lat,
@@ -372,10 +373,13 @@ watch(isSummaryModalVisible, async (isVisible) => {
           });
         }
       } catch (e) {
+        // ✨ THIS ALERT WILL SHOW THE HIDDEN ERROR ✨
+        alert("Map Error: " + e.message);
         console.error("Error creating map", e);
       }
     }
   } else if (!isVisible && map) {
+    // Destroy the map when the modal is closed
     await map.destroy();
     map = null;
   }
