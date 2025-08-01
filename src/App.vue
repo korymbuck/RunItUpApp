@@ -351,7 +351,7 @@ watch(isSummaryModalVisible, async (isVisible) => {
         map = await GoogleMap.create({
           id: "run-summary-map-" + Date.now(),
           element: mapRef.value,
-          apiKey: "YOUR_API_KEY_HERE", // Paste your key here
+          apiKey: "AIzaSyCH2eT6rpZ9FcGnSwRm0G7bg8w-8cXRGmw",
           config: {
             center: {
               lat: lastRunSummary.value.route[0].lat,
