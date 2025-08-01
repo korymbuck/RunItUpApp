@@ -349,9 +349,9 @@ watch(isSummaryModalVisible, async (isVisible) => {
     if (mapRef.value) {
       try {
         map = await GoogleMap.create({
-          id: "run-summary-map-" + Date.now(),
+          id: "run-summary-map",
           element: mapRef.value,
-          apiKey: "AIzaSyCH2eT6rpZ9FcGnSwRm0G7bg8w-8cXRGmw",
+          apiKey: "AIzaSyCH2eT6rpZ9FcGnSwRm0G7bg8w-8cXRGmw", // PASTE YOUR KEY HERE
           config: {
             center: {
               lat: lastRunSummary.value.route[0].lat,
@@ -373,7 +373,6 @@ watch(isSummaryModalVisible, async (isVisible) => {
           });
         }
       } catch (e) {
-        // ✨ THIS ALERT WILL SHOW THE HIDDEN ERROR ✨
         alert("Map Error: " + e.message);
         console.error("Error creating map", e);
       }
