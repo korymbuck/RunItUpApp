@@ -111,8 +111,9 @@ const photoURL = ref(null);
 const newDisplayName = ref("");
 const fileInput = ref(null);
 const showMap = ref(false);
-const mapRef = ref(null);
 let map = null;
+const mapRef = ref(null);
+const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -351,7 +352,7 @@ watch(isSummaryModalVisible, async (isVisible) => {
         map = await GoogleMap.create({
           id: "run-summary-map",
           element: mapRef.value,
-          apiKey: "AIzaSyCH2eT6rpZ9FcGnSwRm0G7bg8w-8cXRGmw", // PASTE YOUR KEY HERE
+          apiKey: apiKey,
           config: {
             center: {
               lat: lastRunSummary.value.route[0].lat,
@@ -383,6 +384,49 @@ watch(isSummaryModalVisible, async (isVisible) => {
     map = null;
   }
 });
+
+const createMap = async () => {
+  if (!lastRunSummary.value?.route?.length > 0 || !mapRef.value) return;
+
+  try {
+    map = await GoogleMap.create({
+      id: "run-summary-map",
+      element: mapRef.value,
+      apiKey: apiKey,
+      config: {
+        center: {
+          lat: lastRunSummary.value.route[0].lat,
+          lng: lastRunSummary.value.route[0].lng,
+        },
+        zoom: 16,
+        disableDefaultUI: true,
+      },
+    });
+
+    if (lastRunSummary.value.route.length > 1) {
+      await map.addPolyline({
+        path: lastRunSummary.value.route,
+        strokeColor: "#3B82F6",
+        strokeWeight: 5,
+      });
+      // Fit map to the bounds of the polyline
+      await map.moveCamera({
+        target: lastRunSummary.value.route,
+        padding: 40,
+      });
+    }
+  } catch (e) {
+    console.error("Error creating map", e);
+    alert(`Map Error: ${e.message}`);
+  }
+};
+
+const destroyMap = async () => {
+  if (map) {
+    await map.destroy();
+    map = null;
+  }
+};
 
 // --- FIREBASE METHODS ---
 async function handleSignIn() {
@@ -1122,9 +1166,11 @@ onMounted(() => {
     >
     <ion-modal
       :is-open="isSummaryModalVisible"
-      @didDismiss="isSummaryModalVisible = false"
-      @ionModalDidPresent="showMap = true"
-      @ionModalWillDismiss="showMap = false"
+      @didDismiss="
+        isSummaryModalVisible = false;
+        destroyMap();
+      "
+      @ionModalDidPresent="createMap"
     >
       <ion-header>
         <ion-toolbar color="dark">
