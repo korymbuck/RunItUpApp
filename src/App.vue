@@ -386,7 +386,21 @@ watch(isSummaryModalVisible, async (isVisible) => {
 });
 
 const createMap = async () => {
-  if (!lastRunSummary.value?.route?.length > 0 || !mapRef.value) return;
+  console.log("ionModalDidPresent event fired, attempting to create map...");
+
+  if (!mapRef.value) {
+    console.error("Map container (mapRef) is not available.");
+    return;
+  }
+
+  if (!lastRunSummary.value?.route || lastRunSummary.value.route.length === 0) {
+    console.error("No route data found in lastRunSummary.");
+    return;
+  }
+
+  console.log("API Key:", apiKey ? "Loaded" : "MISSING!");
+  console.log("Map container element:", mapRef.value);
+  console.log("Route data:", JSON.stringify(lastRunSummary.value.route));
 
   try {
     map = await GoogleMap.create({
@@ -403,20 +417,25 @@ const createMap = async () => {
       },
     });
 
+    console.log("GoogleMap.create was called successfully.");
+
     if (lastRunSummary.value.route.length > 1) {
       await map.addPolyline({
         path: lastRunSummary.value.route,
         strokeColor: "#3B82F6",
         strokeWeight: 5,
       });
-      // Fit map to the bounds of the polyline
+      console.log("Polyline added to the map.");
+
       await map.moveCamera({
         target: lastRunSummary.value.route,
         padding: 40,
       });
+      console.log("Camera moved.");
     }
   } catch (e) {
-    console.error("Error creating map", e);
+    // This is the most important log!
+    console.error("MAP CREATION FAILED:", e);
     alert(`Map Error: ${e.message}`);
   }
 };
