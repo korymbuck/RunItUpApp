@@ -2679,6 +2679,7 @@ async function deleteRun(index) {
   // Create the alert using the controller
   const alert = await alertController.create({
     header: "Confirm Deletion",
+    cssClass: "ion-dark",
     message:
       "Are you sure you want to delete this run? This action cannot be undone.",
     buttons: [

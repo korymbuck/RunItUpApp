@@ -338,7 +338,7 @@ async function deleteRun(index) {
   // Create the alert using the controller
   const alert = await alertController.create({
     header: "Confirm Deletion",
-    cssClass: "ion-dark",
+    cssClass: "custom-alert",
     message:
       "Are you sure you want to delete this run? This action cannot be undone.",
     buttons: [
@@ -1539,5 +1539,33 @@ ion-content {
   height: 30px;
   border-radius: 50%;
   object-fit: cover;
+}
+/* Custom Alert Styles for Dark Theme */
+.custom-alert {
+  /* Set the main background of the alert box */
+  --background: #2b499b; /* A slightly lighter shade of your app's blue for contrast */
+  --backdrop-opacity: 0.6;
+}
+
+/* Style the header/title text */
+.custom-alert .alert-title {
+  color: #ffffff !important;
+}
+
+/* Style the message text */
+.custom-alert .alert-message {
+  color: #e0e0e0 !important; /* A slightly off-white for the body text */
+}
+
+/* Style the buttons */
+.custom-alert .alert-button {
+  color: #fbbf24 !important; /* Your yellow accent color for buttons */
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Specifically color the "Delete" button to be more dangerous */
+.custom-alert .alert-button-role-destructive {
+  color: #ff4961 !important; /* A typical red for destructive actions */
 }
 </style>
