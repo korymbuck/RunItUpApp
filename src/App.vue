@@ -18,8 +18,8 @@ import {
   IonModal,
   IonIcon,
   IonProgressBar,
-  useIonAlert,
-  useIonToast,
+  alertController,
+  toastController,
 } from "@ionic/vue";
 import {
   home,
@@ -116,8 +116,6 @@ const showMap = ref(false);
 let map = null;
 const mapRef = ref(null);
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-const [presentAlert] = useIonAlert();
-const [presentToast] = useIonToast();
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -284,12 +282,14 @@ async function stopWorkout() {
       isSummaryModalVisible.value = true;
     } catch (error) {
       console.error("Error saving run:", error);
-      presentToast({
+      // Create and present the toast on error
+      const toast = await toastController.create({
         message: "There was an error saving your run.",
         duration: 3000,
         color: "danger",
         position: "top",
       });
+      await toast.present();
     }
   }
   currentDistance.value = 0;
@@ -335,7 +335,8 @@ async function deleteRun(index) {
   if (navigator.vibrate) navigator.vibrate(50);
   if (!user.value) return;
 
-  presentAlert({
+  // Create the alert using the controller
+  const alert = await alertController.create({
     header: "Confirm Deletion",
     message:
       "Are you sure you want to delete this run? This action cannot be undone.",
@@ -343,33 +344,42 @@ async function deleteRun(index) {
       { text: "Cancel", role: "cancel" },
       {
         text: "Delete",
-        role: "destructive", // Makes the button red on iOS
+        role: "destructive",
         handler: async () => {
           const runToDelete = runHistory.value[index];
           if (runToDelete.id) {
             try {
               await deleteDoc(doc(db, "runs", runToDelete.id));
               await fetchUserRuns(user.value.uid);
-              presentToast({
+
+              // Create and present a success toast
+              const toast = await toastController.create({
                 message: "Run deleted successfully.",
                 duration: 2000,
                 color: "success",
                 position: "top",
               });
+              await toast.present();
             } catch (error) {
               console.error("Error deleting run:", error);
-              presentToast({
+
+              // Create and present an error toast
+              const toast = await toastController.create({
                 message: "Failed to delete run. Please try again.",
                 duration: 3000,
                 color: "danger",
                 position: "top",
               });
+              await toast.present();
             }
           }
         },
       },
     ],
   });
+
+  // Present the alert
+  await alert.present();
 }
 
 // --- MAP LOGIC ---
