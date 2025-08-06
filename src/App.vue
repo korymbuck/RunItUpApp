@@ -18,6 +18,8 @@ import {
   IonModal,
   IonIcon,
   IonProgressBar,
+  useIonAlert,
+  useIonToast,
 } from "@ionic/vue";
 import {
   home,
@@ -114,6 +116,8 @@ const showMap = ref(false);
 let map = null;
 const mapRef = ref(null);
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const [presentAlert] = useIonAlert();
+const [presentToast] = useIonToast();
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -280,7 +284,12 @@ async function stopWorkout() {
       isSummaryModalVisible.value = true;
     } catch (error) {
       console.error("Error saving run:", error);
-      alert("There was an error saving your run.");
+      presentToast({
+        message: "There was an error saving your run.",
+        duration: 3000,
+        color: "danger",
+        position: "top",
+      });
     }
   }
   currentDistance.value = 0;
@@ -323,23 +332,44 @@ async function logRun() {
 }
 
 async function deleteRun(index) {
-  if (navigator.vibrate) {
-    navigator.vibrate(50);
-  }
-  if (!user.value) {
-    alert("Please log in to delete runs.");
-    return;
-  }
-  if (confirm("Are you sure you want to delete this run?")) {
-    const runToDelete = runHistory.value[index];
-    if (runToDelete.id) {
-      await deleteDoc(doc(db, "runs", runToDelete.id));
-      await fetchUserRuns(user.value.uid);
-      if ("vibrate" in navigator) navigator.vibrate(50);
-    } else {
-      alert("Error: Run ID not found for deletion.");
-    }
-  }
+  if (navigator.vibrate) navigator.vibrate(50);
+  if (!user.value) return;
+
+  presentAlert({
+    header: "Confirm Deletion",
+    message:
+      "Are you sure you want to delete this run? This action cannot be undone.",
+    buttons: [
+      { text: "Cancel", role: "cancel" },
+      {
+        text: "Delete",
+        role: "destructive", // Makes the button red on iOS
+        handler: async () => {
+          const runToDelete = runHistory.value[index];
+          if (runToDelete.id) {
+            try {
+              await deleteDoc(doc(db, "runs", runToDelete.id));
+              await fetchUserRuns(user.value.uid);
+              presentToast({
+                message: "Run deleted successfully.",
+                duration: 2000,
+                color: "success",
+                position: "top",
+              });
+            } catch (error) {
+              console.error("Error deleting run:", error);
+              presentToast({
+                message: "Failed to delete run. Please try again.",
+                duration: 3000,
+                color: "danger",
+                position: "top",
+              });
+            }
+          }
+        },
+      },
+    ],
+  });
 }
 
 // --- MAP LOGIC ---
@@ -1246,6 +1276,9 @@ onMounted(() => {
 <style scoped>
 ion-header ion-toolbar {
   --background: #1e3a8a;
+}
+ion-content {
+  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
 }
 
 .welcome-text {
