@@ -2361,6 +2361,7 @@ import {
   IonProgressBar,
   alertController,
   toastController,
+  IonSpinner,
 } from "@ionic/vue";
 import {
   home,
@@ -2402,6 +2403,7 @@ import {
 import { storage } from "./firebase-config.js";
 
 // --- STATE ---
+const isLoading = ref(true);
 const levels = [
   { name: "Bronze", emoji: "🥉", xp: 25 },
   { name: "Silver", emoji: "🥈", xp: 50 },
@@ -3105,6 +3107,7 @@ async function updateUsername() {
 // --- ON MOUNTED ---
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
+    isLoading.value = true;
     if (authUser) {
       user.value = authUser;
       const userDoc = await getDoc(doc(db, "users", authUser.uid));
@@ -3128,500 +3131,538 @@ onMounted(() => {
         friendsListenerUnsubscribe = null;
       }
     }
+    isLoading.value = false;
   });
 });
 </script>
 
 <template>
   <ion-app>
-    <ion-header class="ion-no-border">
-      <ion-toolbar color="#1e3a8a">
-        <ion-title>RunItUp</ion-title>
-      </ion-toolbar>
-    </ion-header>
-
-    <ion-content :fullscreen="true">
-      <img
-        v-if="photoURL && currentPage === 'home'"
-        :src="photoURL"
-        class="page-avatar"
-      />
-      <div v-if="user" class="ion-text-center ion-margin-bottom">
-        <img
-          src="/icons/boot.svg"
-          alt="RunItUp Logo"
-          style="width: 100px; height: auto; margin: auto"
-        />
-        <p class="ion-margin-top welcome-text">Hello, {{ displayName }}!</p>
+    <!-- Loading Overlay -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-content">
+        <img src="/icons/boot.svg" alt="RunItUp Logo" class="loading-logo" />
+        <p>Loading your stats...</p>
+        <ion-spinner name="crescent"></ion-spinner>
       </div>
-      <Transition name="fade">
-        <div v-if="currentPage === 'home'" class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Overall Stats</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
+    </div>
+
+    <!-- Main Content -->
+    <template v-if="!isLoading">
+      <ion-header class="ion-no-border">
+        <ion-toolbar color="#1e3a8a">
+          <ion-title>RunItUp</ion-title>
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content :fullscreen="true">
+        <img
+          v-if="photoURL && currentPage === 'home'"
+          :src="photoURL"
+          class="page-avatar"
+        />
+        <div v-if="user" class="ion-text-center ion-margin-bottom">
+          <img
+            src="/icons/boot.svg"
+            alt="RunItUp Logo"
+            style="width: 100px; height: auto; margin: auto"
+          />
+          <p class="ion-margin-top welcome-text">Hello, {{ displayName }}!</p>
+        </div>
+
+        <!-- Home Page -->
+        <Transition name="fade">
+          <div v-if="currentPage === 'home'" class="ion-padding">
+            <!-- Overall Stats Card -->
+            <ion-card class="styled-card">
+              <ion-card-header>
+                <ion-card-title>Overall Stats</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <div class="stat-item">
+                  <p class="stat-label">Total Distance</p>
+                  <p class="stat-value">
+                    {{ animatedTotalDistance.toFixed(2) }}
+                    <span class="stat-unit">miles</span>
+                  </p>
+                </div>
+                <div class="stat-item">
+                  <p class="stat-label">Total Time</p>
+                  <p class="stat-value">
+                    {{ formatTime(animatedTotalTime, true) }}
+                  </p>
+                </div>
+                <div class="stat-item">
+                  <p class="stat-label">XP</p>
+                  <p class="stat-value">{{ Math.floor(animatedXp) }}</p>
+                </div>
+                <div class="ion-margin-top">
+                  <div class="level-display">
+                    <span class="level-emoji">{{ currentLevel.emoji }}</span>
+                    <span>Level: {{ currentLevel.name }}</span>
+                  </div>
+                  <ion-progress-bar
+                    :value="progress"
+                    color="warning"
+                    class="ion-margin-top"
+                  ></ion-progress-bar>
+                  <p class="xp-text">
+                    {{ Math.floor(xp) }} /
+                    {{ currentLevel.xp === Infinity ? "∞" : currentLevel.xp }}
+                    XP to
+                    {{ nextLevel.name }}
+                  </p>
+                </div>
+              </ion-card-content>
+            </ion-card>
+
+            <!-- Track a Run Card -->
+            <ion-card class="styled-card">
+              <ion-card-header>
+                <ion-card-title>Track a Run</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-button
+                  v-if="!isTracking"
+                  expand="block"
+                  @click="startWorkout"
+                  class="yellow-button"
+                  >Start Tracking</ion-button
+                >
+                <div v-if="isTracking">
+                  <div class="tracking-stats">
+                    <div>
+                      <p class="tracking-label">DISTANCE</p>
+                      <p class="tracking-value">
+                        {{ currentDistance.toFixed(2) }} mi
+                      </p>
+                    </div>
+                    <div>
+                      <p class="tracking-label">PACE</p>
+                      <p class="tracking-value">
+                        {{ formatTime(currentPace) }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="tracking-label">TIME</p>
+                      <p class="tracking-value">
+                        {{ formatTime(elapsedTime) }}
+                      </p>
+                    </div>
+                  </div>
+                  <ion-button
+                    expand="block"
+                    @click="stopWorkout"
+                    color="danger"
+                    class="ion-margin-top"
+                    >Stop Workout</ion-button
+                  >
+                </div>
+              </ion-card-content>
+            </ion-card>
+
+            <!-- Log a Run Card -->
+            <ion-card class="styled-card">
+              <ion-card-header>
+                <ion-card-title>Log a Run</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <div class="input-group">
+                  <ion-input
+                    class="styled-input"
+                    placeholder="Distance (miles)"
+                    type="number"
+                    v-model="distanceInput"
+                  ></ion-input>
+                  <div style="display: flex; gap: 8px" class="ion-margin-top">
+                    <ion-input
+                      class="styled-input"
+                      placeholder="Hours"
+                      type="number"
+                      v-model="hoursInput"
+                    ></ion-input>
+                    <ion-input
+                      class="styled-input"
+                      placeholder="Minutes"
+                      type="number"
+                      v-model="minutesInput"
+                    ></ion-input>
+                    <ion-input
+                      class="styled-input"
+                      placeholder="Seconds"
+                      type="number"
+                      v-model="secondsInput"
+                    ></ion-input>
+                  </div>
+                </div>
+                <ion-button
+                  expand="block"
+                  @click="logRun"
+                  class="ion-margin-top yellow-button"
+                  >Log Run</ion-button
+                >
+              </ion-card-content>
+            </ion-card>
+
+            <!-- Run History Card -->
+            <ion-card class="styled-card" v-if="runHistory.length > 0">
+              <ion-card-header>
+                <ion-card-title>Run History</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-list lines="none">
+                  <div
+                    v-for="(run, index) in displayedRuns"
+                    :key="run.id"
+                    class="run-history-item"
+                  >
+                    <div class="run-history-header">
+                      <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
+                      <ion-button
+                        fill="clear"
+                        color="danger"
+                        size="small"
+                        @click="deleteRun(index)"
+                      >
+                        <ion-icon slot="icon-only" :icon="trash"></ion-icon>
+                      </ion-button>
+                    </div>
+                    <div class="run-history-stats">
+                      <div>
+                        <p class="stat-label">Distance</p>
+                        <p class="stat-value small">
+                          {{ run.distance.toFixed(2) }}
+                          <span class="stat-unit">mi</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p class="stat-label">Time</p>
+                        <p class="stat-value small">
+                          {{ formatTime(run.time, true) }}
+                        </p>
+                      </div>
+                      <div>
+                        <p class="stat-label">Avg Pace</p>
+                        <p class="stat-value small">
+                          {{ formatTime(run.pace) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </ion-list>
+                <ion-button
+                  v-if="visibleRunsCount < runHistory.length"
+                  @click="showMoreRuns"
+                  expand="block"
+                  fill="outline"
+                  class="ion-margin-top"
+                  >See More</ion-button
+                >
+              </ion-card-content>
+            </ion-card>
+          </div>
+        </Transition>
+
+        <!-- Social Page -->
+        <Transition name="fade">
+          <div v-if="currentPage === 'social'" class="ion-padding">
+            <img v-if="photoURL" :src="photoURL" class="page-avatar" />
+            <ion-button
+              expand="block"
+              @click="openFollowModal"
+              class="ion-margin-bottom"
+              color="primary"
+              >Follow a New User</ion-button
+            >
+            <ion-card class="styled-card" v-if="friends.length > 0">
+              <ion-card-header>
+                <ion-card-title>Following</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <div
+                  v-for="friend in friends"
+                  :key="friend.uid"
+                  class="friend-card"
+                >
+                  <div class="friend-header">
+                    <div class="friend-identity">
+                      <img
+                        :src="friend.photoURL || '/default-avatar.png'"
+                        class="friend-avatar"
+                      />
+                      <h2>{{ friend.displayName }}</h2>
+                    </div>
+                    <ion-button
+                      color="danger"
+                      size="small"
+                      @click="unfollowUser(friend)"
+                      >Unfollow</ion-button
+                    >
+                  </div>
+                  <div
+                    v-if="friend.stats && friend.stats.lastRun"
+                    class="run-history-item mini"
+                  >
+                    <p class="ion-text-center"><small>LATEST RUN</small></p>
+                    <div class="run-history-stats">
+                      <div>
+                        <p class="stat-label">Distance</p>
+                        <p class="stat-value small">
+                          {{ friend.stats.lastRun.distance.toFixed(2) }}
+                          <span class="stat-unit">mi</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p class="stat-label">Time</p>
+                        <p class="stat-value small">
+                          {{ formatTime(friend.stats.lastRun.time, true) }}
+                        </p>
+                      </div>
+                      <div>
+                        <p class="stat-label">Avg Pace</p>
+                        <p class="stat-value small">
+                          {{ formatTime(friend.stats.lastRun.pace) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="friend-total-stats">
+                    <p>
+                      <strong>Total Distance:</strong>
+                      {{
+                        friend.stats ? friend.stats.totalDistance.toFixed(2) : 0
+                      }}
+                      miles
+                    </p>
+                    <p>
+                      <strong>Total Time:</strong>
+                      {{
+                        friend.stats
+                          ? formatTime(friend.stats.totalTime, true)
+                          : "00:00:00"
+                      }}
+                    </p>
+                  </div>
+                </div>
+              </ion-card-content>
+            </ion-card>
+            <p v-else class="ion-text-center ion-padding">
+              You aren't following anyone yet.
+            </p>
+          </div>
+        </Transition>
+
+        <!-- Profile Page -->
+        <Transition name="fade">
+          <div v-if="currentPage === 'profile'" class="ion-padding">
+            <ion-card class="styled-card">
+              <ion-card-header>
+                <ion-card-title class="ion-text-center"
+                  >Your Profile</ion-card-title
+                >
+              </ion-card-header>
+              <ion-card-content class="ion-text-center">
+                <img
+                  :src="photoURL || '/default-avatar.png'"
+                  class="profile-picture"
+                  @click="triggerFileUpload"
+                />
+                <input
+                  type="file"
+                  @change="handlePictureUpload"
+                  ref="fileInput"
+                  style="display: none"
+                  accept="image/*"
+                />
+                <p><small>Tap picture to change</small></p>
+                <div class="ion-margin-top">
+                  <ion-input
+                    class="styled-input"
+                    placeholder="Enter new username"
+                    v-model="newDisplayName"
+                  ></ion-input>
+                  <ion-button
+                    expand="block"
+                    @click="updateUsername"
+                    color="primary"
+                    class="ion-margin-top"
+                    >Save Username</ion-button
+                  >
+                </div>
+                <ion-button
+                  expand="block"
+                  @click="handleSignOut"
+                  color="danger"
+                  class="ion-margin-top"
+                  >Sign Out</ion-button
+                >
+              </ion-card-content>
+            </ion-card>
+          </div>
+        </Transition>
+
+        <!-- Footer Tabs -->
+        <div v-if="user" class="footer-tabs">
+          <button
+            @click="currentPage = 'home'"
+            :class="{ active: currentPage === 'home' }"
+          >
+            <ion-icon :icon="home"></ion-icon>
+            <ion-label>Home</ion-label>
+          </button>
+          <button
+            @click="currentPage = 'social'"
+            :class="{ active: currentPage === 'social' }"
+          >
+            <ion-icon :icon="people"></ion-icon>
+            <ion-label>Social</ion-label>
+          </button>
+          <button
+            @click="currentPage = 'profile'"
+            :class="{ active: currentPage === 'profile' }"
+          >
+            <ion-icon :icon="personCircle"></ion-icon>
+            <ion-label>Profile</ion-label>
+          </button>
+        </div>
+      </ion-content>
+
+      <!-- Auth Modal -->
+      <ion-modal
+        :is-open="isAuthModalVisible"
+        :backdrop-dismiss="false"
+        class="auth-modal"
+      >
+        <ion-content class="ion-padding">
+          <h2 class="ion-text-center">Account</h2>
+          <div class="input-group ion-margin-top">
+            <ion-input
+              class="styled-input"
+              placeholder="Username"
+              v-model="displayName"
+            ></ion-input>
+            <ion-input
+              class="styled-input"
+              placeholder="Email"
+              type="email"
+              v-model="email"
+            ></ion-input>
+            <ion-input
+              class="styled-input"
+              placeholder="Password"
+              type="password"
+              v-model="password"
+            ></ion-input>
+          </div>
+          <ion-button
+            expand="block"
+            @click="handleSignIn"
+            class="ion-margin-top"
+            color="primary"
+            >Sign In</ion-button
+          >
+          <ion-button expand="block" @click="handleSignUp" color="success"
+            >Sign Up</ion-button
+          >
+          <p
+            v-if="authMessage"
+            class="ion-text-center ion-padding"
+            style="color: var(--ion-color-warning)"
+          >
+            {{ authMessage }}
+          </p>
+        </ion-content>
+      </ion-modal>
+
+      <!-- Follow User Modal -->
+      <ion-modal
+        :is-open="isFollowModalVisible"
+        @didDismiss="closeFollowModal()"
+        class="auth-modal"
+      >
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Follow a User</ion-title>
+            <ion-button slot="end" fill="clear" @click="closeFollowModal()">
+              <ion-icon :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-input
+            class="styled-input"
+            placeholder="Username"
+            v-model="friendUsername"
+          ></ion-input>
+          <ion-button
+            expand="block"
+            @click="addFriend"
+            class="ion-margin-top"
+            color="success"
+          >
+            Follow User
+          </ion-button>
+        </ion-content>
+      </ion-modal>
+
+      <!-- Run Summary Modal -->
+      <ion-modal
+        :is-open="isSummaryModalVisible"
+        @didDismiss="
+          isSummaryModalVisible = false;
+          destroyMap();
+        "
+        @ionModalDidPresent="createMap"
+      >
+        <ion-header>
+          <ion-toolbar color="dark">
+            <ion-title>Run Summary</ion-title>
+            <ion-button
+              slot="end"
+              fill="clear"
+              @click="isSummaryModalVisible = false"
+            >
+              <ion-icon :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <div v-if="lastRunSummary">
+            <capacitor-google-map
+              ref="mapRef"
+              style="
+                display: block;
+                height: 300px;
+                width: 100%;
+                border-radius: 10px;
+              "
+            ></capacitor-google-map>
+            <div class="ion-text-center ion-margin-top">
               <div class="stat-item">
-                <p class="stat-label">Total Distance</p>
+                <p class="stat-label">Distance</p>
                 <p class="stat-value">
-                  {{ animatedTotalDistance.toFixed(2) }}
+                  {{ lastRunSummary.distance.toFixed(2) }}
                   <span class="stat-unit">miles</span>
                 </p>
               </div>
               <div class="stat-item">
-                <p class="stat-label">Total Time</p>
+                <p class="stat-label">Time</p>
                 <p class="stat-value">
-                  {{ formatTime(animatedTotalTime, true) }}
+                  {{ formatTime(lastRunSummary.time, true) }}
                 </p>
               </div>
               <div class="stat-item">
-                <p class="stat-label">XP</p>
-                <p class="stat-value">{{ Math.floor(animatedXp) }}</p>
-              </div>
-
-              <div class="ion-margin-top">
-                <div class="level-display">
-                  <span class="level-emoji">{{ currentLevel.emoji }}</span>
-                  <span>Level: {{ currentLevel.name }}</span>
-                </div>
-                <ion-progress-bar
-                  :value="progress"
-                  color="warning"
-                  class="ion-margin-top"
-                ></ion-progress-bar>
-                <p class="xp-text">
-                  {{ Math.floor(xp) }} /
-                  {{ currentLevel.xp === Infinity ? "∞" : currentLevel.xp }} XP
-                  to
-                  {{ nextLevel.name }}
+                <p class="stat-label">Avg. Pace</p>
+                <p class="stat-value">
+                  {{ formatTime(lastRunSummary.pace) }}
+                  <span class="stat-unit">/ mile</span>
                 </p>
               </div>
-            </ion-card-content>
-          </ion-card>
-
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Track a Run</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <ion-button
-                v-if="!isTracking"
-                expand="block"
-                @click="startWorkout"
-                class="yellow-button"
-                >Start Tracking</ion-button
-              >
-              <div v-if="isTracking">
-                <div class="tracking-stats">
-                  <div>
-                    <p class="tracking-label">DISTANCE</p>
-                    <p class="tracking-value">
-                      {{ currentDistance.toFixed(2) }} mi
-                    </p>
-                  </div>
-                  <div>
-                    <p class="tracking-label">PACE</p>
-                    <p class="tracking-value">{{ formatTime(currentPace) }}</p>
-                  </div>
-                  <div>
-                    <p class="tracking-label">TIME</p>
-                    <p class="tracking-value">{{ formatTime(elapsedTime) }}</p>
-                  </div>
-                </div>
-                <ion-button
-                  expand="block"
-                  @click="stopWorkout"
-                  color="danger"
-                  class="ion-margin-top"
-                  >Stop Workout</ion-button
-                >
-              </div>
-            </ion-card-content>
-          </ion-card>
-
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Log a Run</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <div class="input-group">
-                <ion-input
-                  class="styled-input"
-                  placeholder="Distance (miles)"
-                  type="number"
-                  v-model="distanceInput"
-                ></ion-input>
-                <div style="display: flex; gap: 8px" class="ion-margin-top">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Hours"
-                    type="number"
-                    v-model="hoursInput"
-                  ></ion-input>
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Minutes"
-                    type="number"
-                    v-model="minutesInput"
-                  ></ion-input>
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Seconds"
-                    type="number"
-                    v-model="secondsInput"
-                  ></ion-input>
-                </div>
-              </div>
-              <ion-button
-                expand="block"
-                @click="logRun"
-                class="ion-margin-top yellow-button"
-                >Log Run</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-
-          <ion-card class="styled-card" v-if="runHistory.length > 0">
-            <ion-card-header>
-              <ion-card-title>Run History</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <ion-list lines="none">
-                <div
-                  v-for="(run, index) in displayedRuns"
-                  :key="run.id"
-                  class="run-history-item"
-                >
-                  <div class="run-history-header">
-                    <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
-                    <ion-button
-                      fill="clear"
-                      color="danger"
-                      size="small"
-                      @click="deleteRun(index)"
-                    >
-                      <ion-icon slot="icon-only" :icon="trash"></ion-icon>
-                    </ion-button>
-                  </div>
-                  <div class="run-history-stats">
-                    <div>
-                      <p class="stat-label">Distance</p>
-                      <p class="stat-value small">
-                        {{ run.distance.toFixed(2) }}
-                        <span class="stat-unit">mi</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Time</p>
-                      <p class="stat-value small">
-                        {{ formatTime(run.time, true) }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Avg Pace</p>
-                      <p class="stat-value small">{{ formatTime(run.pace) }}</p>
-                    </div>
-                  </div>
-                </div>
-              </ion-list>
-              <ion-button
-                v-if="visibleRunsCount < runHistory.length"
-                @click="showMoreRuns"
-                expand="block"
-                fill="outline"
-                class="ion-margin-top"
-                >See More</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-        </div>
-      </Transition>
-      <Transition name="fade">
-        <div v-if="currentPage === 'social'" class="ion-padding">
-          <img v-if="photoURL" :src="photoURL" class="page-avatar" />
-          <ion-button
-            expand="block"
-            @click="openFollowModal"
-            class="ion-margin-bottom"
-            color="primary"
-            >Follow a New User</ion-button
-          >
-          <ion-card class="styled-card" v-if="friends.length > 0">
-            <ion-card-header>
-              <ion-card-title>Following</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <div
-                v-for="friend in friends"
-                :key="friend.uid"
-                class="friend-card"
-              >
-                <div class="friend-header">
-                  <div class="friend-identity">
-                    <img
-                      :src="friend.photoURL || '/default-avatar.png'"
-                      class="friend-avatar"
-                    />
-                    <h2>{{ friend.displayName }}</h2>
-                  </div>
-                  <ion-button
-                    color="danger"
-                    size="small"
-                    @click="unfollowUser(friend)"
-                    >Unfollow</ion-button
-                  >
-                </div>
-
-                <div
-                  v-if="friend.stats && friend.stats.lastRun"
-                  class="run-history-item mini"
-                >
-                  <p class="ion-text-center"><small>LATEST RUN</small></p>
-                  <div class="run-history-stats">
-                    <div>
-                      <p class="stat-label">Distance</p>
-                      <p class="stat-value small">
-                        {{ friend.stats.lastRun.distance.toFixed(2) }}
-                        <span class="stat-unit">mi</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Time</p>
-                      <p class="stat-value small">
-                        {{ formatTime(friend.stats.lastRun.time, true) }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Avg Pace</p>
-                      <p class="stat-value small">
-                        {{ formatTime(friend.stats.lastRun.pace) }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div class="friend-total-stats">
-                  <p>
-                    <strong>Total Distance:</strong>
-                    {{
-                      friend.stats ? friend.stats.totalDistance.toFixed(2) : 0
-                    }}
-                    miles
-                  </p>
-                  <p>
-                    <strong>Total Time:</strong>
-                    {{
-                      friend.stats
-                        ? formatTime(friend.stats.totalTime, true)
-                        : "00:00:00"
-                    }}
-                  </p>
-                </div>
-              </div>
-            </ion-card-content>
-          </ion-card>
-          <p v-else class="ion-text-center ion-padding">
-            You aren't following anyone yet.
-          </p>
-        </div>
-      </Transition>
-      <Transition name="fade">
-        <div v-if="currentPage === 'profile'" class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title class="ion-text-center"
-                >Your Profile</ion-card-title
-              >
-            </ion-card-header>
-            <ion-card-content class="ion-text-center">
-              <img
-                :src="photoURL || '/default-avatar.png'"
-                class="profile-picture"
-                @click="triggerFileUpload"
-              />
-              <input
-                type="file"
-                @change="handlePictureUpload"
-                ref="fileInput"
-                style="display: none"
-                accept="image/*"
-              />
-              <p><small>Tap picture to change</small></p>
-
-              <div class="ion-margin-top">
-                <ion-input
-                  class="styled-input"
-                  placeholder="Enter new username"
-                  v-model="newDisplayName"
-                ></ion-input>
-                <ion-button
-                  expand="block"
-                  @click="updateUsername"
-                  color="primary"
-                  class="ion-margin-top"
-                  >Save Username</ion-button
-                >
-              </div>
-
-              <ion-button
-                expand="block"
-                @click="handleSignOut"
-                color="danger"
-                class="ion-margin-top"
-                >Sign Out</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-        </div>
-      </Transition>
-      <div v-if="user" class="footer-tabs">
-        <button
-          @click="currentPage = 'home'"
-          :class="{ active: currentPage === 'home' }"
-        >
-          <ion-icon :icon="home"></ion-icon><ion-label>Home</ion-label>
-        </button>
-        <button
-          @click="currentPage = 'social'"
-          :class="{ active: currentPage === 'social' }"
-        >
-          <ion-icon :icon="people"></ion-icon><ion-label>Social</ion-label>
-        </button>
-        <button
-          @click="currentPage = 'profile'"
-          :class="{ active: currentPage === 'profile' }"
-        >
-          <ion-icon :icon="personCircle"></ion-icon
-          ><ion-label>Profile</ion-label>
-        </button>
-      </div>
-    </ion-content>
-
-    <ion-modal
-      :is-open="isAuthModalVisible"
-      :backdrop-dismiss="false"
-      class="auth-modal"
-      ><ion-content class="ion-padding"
-        ><h2 class="ion-text-center">Account</h2>
-        <div class="input-group ion-margin-top">
-          <ion-input
-            class="styled-input"
-            placeholder="Username"
-            v-model="displayName"
-          ></ion-input
-          ><ion-input
-            class="styled-input"
-            placeholder="Email"
-            type="email"
-            v-model="email"
-          ></ion-input
-          ><ion-input
-            class="styled-input"
-            placeholder="Password"
-            type="password"
-            v-model="password"
-          ></ion-input>
-        </div>
-        <ion-button
-          expand="block"
-          @click="handleSignIn"
-          class="ion-margin-top"
-          color="primary"
-          >Sign In</ion-button
-        ><ion-button expand="block" @click="handleSignUp" color="success"
-          >Sign Up</ion-button
-        >
-        <p
-          v-if="authMessage"
-          class="ion-text-center ion-padding"
-          style="color: var(--ion-color-warning)"
-        >
-          {{ authMessage }}
-        </p></ion-content
-      ></ion-modal
-    >
-    <ion-modal
-      :is-open="isFollowModalVisible"
-      @didDismiss="closeFollowModal()"
-      class="auth-modal"
-      ><ion-header
-        ><ion-toolbar color="#1e3a8a"
-          ><ion-title>Follow a User</ion-title
-          ><ion-button slot="end" fill="clear" @click="closeFollowModal()"
-            ><ion-icon
-              :icon="closeCircle"
-            ></ion-icon></ion-button></ion-toolbar></ion-header
-      ><ion-content class="ion-padding"
-        ><ion-input
-          class="styled-input"
-          placeholder="Username"
-          v-model="friendUsername"
-        ></ion-input
-        ><ion-button
-          expand="block"
-          @click="addFriend"
-          class="ion-margin-top"
-          color="success"
-          >Follow User</ion-button
-        ></ion-content
-      ></ion-modal
-    >
-    <ion-modal
-      :is-open="isSummaryModalVisible"
-      @didDismiss="
-        isSummaryModalVisible = false;
-        destroyMap();
-      "
-      @ionModalDidPresent="createMap"
-    >
-      <ion-header>
-        <ion-toolbar color="dark">
-          <ion-title>Run Summary</ion-title>
-          <ion-button
-            slot="end"
-            fill="clear"
-            @click="isSummaryModalVisible = false"
-          >
-            <ion-icon :icon="closeCircle"></ion-icon>
-          </ion-button>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content class="ion-padding">
-        <div v-if="lastRunSummary">
-          <capacitor-google-map
-            ref="mapRef"
-            style="
-              display: block;
-              height: 300px;
-              width: 100%;
-              border-radius: 10px;
-            "
-          ></capacitor-google-map>
-
-          <div class="ion-text-center ion-margin-top">
-            <div class="stat-item">
-              <p class="stat-label">Distance</p>
-              <p class="stat-value">
-                {{ lastRunSummary.distance.toFixed(2) }}
-                <span class="stat-unit">miles</span>
-              </p>
-            </div>
-            <div class="stat-item">
-              <p class="stat-label">Time</p>
-              <p class="stat-value">
-                {{ formatTime(lastRunSummary.time, true) }}
-              </p>
-            </div>
-            <div class="stat-item">
-              <p class="stat-label">Avg. Pace</p>
-              <p class="stat-value">
-                {{ formatTime(lastRunSummary.pace) }}
-                <span class="stat-unit">/ mile</span>
-              </p>
             </div>
           </div>
-        </div>
-      </ion-content>
-    </ion-modal>
+        </ion-content>
+      </ion-modal>
+    </template>
   </ion-app>
 </template>
 
@@ -3916,6 +3957,54 @@ ion-content {
 /* Specifically color the "Delete" button to be more dangerous */
 .custom-alert .alert-button-role-destructive {
   color: #ff4961 !important; /* A typical red for destructive actions */
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--ion-background-color);
+  z-index: 9999;
+  flex-direction: column;
+}
+
+.loading-content p {
+  color: var(--ion-text-color);
+  font-size: 1.2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.loading-logo {
+  width: 120px;
+  height: auto;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+ion-spinner {
+  width: 50px;
+  height: 50px;
+  color: var(--ion-color-primary);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>
 </file>
