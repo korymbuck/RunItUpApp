@@ -30,7 +30,6 @@ import {
   people,
   logOut,
   closeCircle,
-  trophy,
   trash,
   personCircle,
   rocket,
@@ -1233,11 +1232,11 @@ onMounted(() => {
         <ion-content class="ion-padding">
           <ion-card class="styled-card" v-if="lastRunSummary">
             <ion-card-header class="ion-text-center">
-              <ion-icon
-                :icon="trophy"
-                color="warning"
-                class="summary-trophy-icon"
-              ></ion-icon>
+              <img
+                src="/icons/boot.svg"
+                alt="RunItUp Logo"
+                class="summary-logo-icon"
+              />
               <ion-card-title class="summary-title"
                 >Great Work, {{ displayName }}!</ion-card-title
               >
@@ -1743,9 +1742,10 @@ ion-progress-bar {
   --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
 }
 
-.summary-trophy-icon {
-  font-size: 64px;
-  margin-bottom: 0.5rem;
+.summary-logo-icon {
+  width: 80px;
+  height: auto;
+  margin-bottom: 0.75rem;
 }
 
 .summary-title {
@@ -1764,10 +1764,9 @@ ion-progress-bar {
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
   padding: 1rem 0.5rem;
   min-height: 120px;
+  /* Removed background and border-radius to create a single card feel */
 }
 
 .summary-stat-item ion-icon {
