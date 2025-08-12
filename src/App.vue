@@ -21,6 +21,9 @@ import {
   alertController,
   toastController,
   IonSpinner,
+  IonGrid,
+  IonRow,
+  IonCol,
 } from "@ionic/vue";
 import {
   home,
@@ -32,6 +35,8 @@ import {
   personCircle,
   rocket,
   timeOutline,
+  statsChart,
+  speedometer,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -53,8 +58,6 @@ import {
   getDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { gsap } from "gsap";
-import { GoogleMap } from "@capacitor/google-maps";
-import { nextTick, watch } from "vue";
 import {
   getStorage,
   ref as storageRef,
@@ -116,10 +119,6 @@ const lastRunSummary = ref(null);
 const photoURL = ref(null);
 const newDisplayName = ref("");
 const fileInput = ref(null);
-const showMap = ref(false);
-let map = null;
-const mapRef = ref(null);
-const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -139,6 +138,9 @@ const progress = computed(() => {
 });
 const displayedRuns = computed(() =>
   runHistory.value.slice(0, visibleRunsCount.value)
+);
+const lastRunXp = computed(() =>
+  lastRunSummary.value ? Math.floor(lastRunSummary.value.distance) : 0
 );
 
 // --- METHODS ---
@@ -409,111 +411,6 @@ async function deleteRun(index) {
   // Present the alert
   await alert.present();
 }
-
-// --- MAP LOGIC ---
-watch(isSummaryModalVisible, async (isVisible) => {
-  if (isVisible && lastRunSummary.value?.route?.length > 0) {
-    // Use nextTick to ensure the DOM element is available
-    await nextTick();
-    if (mapRef.value) {
-      try {
-        map = await GoogleMap.create({
-          id: "run-summary-map",
-          element: mapRef.value,
-          apiKey: apiKey,
-          config: {
-            center: {
-              lat: lastRunSummary.value.route[0].lat,
-              lng: lastRunSummary.value.route[0].lng,
-            },
-            zoom: 16,
-            disableDefaultUI: true,
-          },
-        });
-        if (lastRunSummary.value.route.length > 1) {
-          await map.addPolyline({
-            path: lastRunSummary.value.route,
-            strokeColor: "#3B82F6",
-            strokeWeight: 5,
-          });
-          await map.moveCamera({
-            target: lastRunSummary.value.route,
-            padding: 40,
-          });
-        }
-      } catch (e) {
-        alert("Map Error: " + e.message);
-        console.error("Error creating map", e);
-      }
-    }
-  } else if (!isVisible && map) {
-    // Destroy the map when the modal is closed
-    await map.destroy();
-    map = null;
-  }
-});
-
-const createMap = async () => {
-  console.log("ionModalDidPresent event fired, attempting to create map...");
-
-  if (!mapRef.value) {
-    console.error("Map container (mapRef) is not available.");
-    return;
-  }
-
-  if (!lastRunSummary.value?.route || lastRunSummary.value.route.length === 0) {
-    console.error("No route data found in lastRunSummary.");
-    return;
-  }
-
-  console.log("API Key:", apiKey ? "Loaded" : "MISSING!");
-  console.log("Map container element:", mapRef.value);
-  console.log("Route data:", JSON.stringify(lastRunSummary.value.route));
-
-  try {
-    map = await GoogleMap.create({
-      id: "run-summary-map",
-      element: mapRef.value,
-      apiKey: apiKey,
-      config: {
-        center: {
-          lat: lastRunSummary.value.route[0].lat,
-          lng: lastRunSummary.value.route[0].lng,
-        },
-        zoom: 16,
-        disableDefaultUI: true,
-      },
-    });
-
-    console.log("GoogleMap.create was called successfully.");
-
-    if (lastRunSummary.value.route.length > 1) {
-      await map.addPolyline({
-        path: lastRunSummary.value.route,
-        strokeColor: "#3B82F6",
-        strokeWeight: 5,
-      });
-      console.log("Polyline added to the map.");
-
-      await map.moveCamera({
-        target: lastRunSummary.value.route,
-        padding: 40,
-      });
-      console.log("Camera moved.");
-    }
-  } catch (e) {
-    // This is the most important log!
-    console.error("MAP CREATION FAILED:", e);
-    alert(`Map Error: ${e.message}`);
-  }
-};
-
-const destroyMap = async () => {
-  if (map) {
-    await map.destroy();
-    map = null;
-  }
-};
 
 // --- FIREBASE METHODS ---
 async function handleSignIn() {
@@ -1315,18 +1212,15 @@ onMounted(() => {
         </ion-content>
       </ion-modal>
 
-      <!-- Run Summary Modal -->
+      <!-- NEW Run Summary Modal -->
       <ion-modal
         :is-open="isSummaryModalVisible"
-        @didDismiss="
-          isSummaryModalVisible = false;
-          destroyMap();
-        "
-        @ionModalDidPresent="createMap"
+        @didDismiss="isSummaryModalVisible = false"
+        class="summary-modal"
       >
         <ion-header>
-          <ion-toolbar color="dark">
-            <ion-title>Run Summary</ion-title>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Run Complete!</ion-title>
             <ion-button
               slot="end"
               fill="clear"
@@ -1337,39 +1231,54 @@ onMounted(() => {
           </ion-toolbar>
         </ion-header>
         <ion-content class="ion-padding">
-          <div v-if="lastRunSummary">
-            <capacitor-google-map
-              ref="mapRef"
-              style="
-                display: block;
-                height: 300px;
-                width: 100%;
-                border-radius: 10px;
-              "
-            ></capacitor-google-map>
-            <div class="ion-text-center ion-margin-top">
-              <div class="stat-item">
-                <p class="stat-label">Distance</p>
-                <p class="stat-value">
-                  {{ lastRunSummary.distance.toFixed(2) }}
-                  <span class="stat-unit">miles</span>
-                </p>
-              </div>
-              <div class="stat-item">
-                <p class="stat-label">Time</p>
-                <p class="stat-value">
-                  {{ formatTime(lastRunSummary.time, true) }}
-                </p>
-              </div>
-              <div class="stat-item">
-                <p class="stat-label">Avg. Pace</p>
-                <p class="stat-value">
-                  {{ formatTime(lastRunSummary.pace) }}
-                  <span class="stat-unit">/ mile</span>
-                </p>
-              </div>
-            </div>
-          </div>
+          <ion-card class="styled-card" v-if="lastRunSummary">
+            <ion-card-header class="ion-text-center">
+              <ion-icon
+                :icon="trophy"
+                color="warning"
+                class="summary-trophy-icon"
+              ></ion-icon>
+              <ion-card-title class="summary-title"
+                >Great Work, {{ displayName }}!</ion-card-title
+              >
+            </ion-card-header>
+            <ion-card-content>
+              <ion-grid class="summary-stats-grid">
+                <ion-row>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="rocket" color="primary"></ion-icon>
+                    <p class="stat-label">Distance</p>
+                    <p class="stat-value">
+                      {{ lastRunSummary.distance.toFixed(2) }}
+                      <span class="stat-unit">mi</span>
+                    </p>
+                  </ion-col>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                    <p class="stat-label">Time</p>
+                    <p class="stat-value">
+                      {{ formatTime(lastRunSummary.time, true) }}
+                    </p>
+                  </ion-col>
+                </ion-row>
+                <ion-row>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="speedometer" color="primary"></ion-icon>
+                    <p class="stat-label">Avg. Pace</p>
+                    <p class="stat-value">
+                      {{ formatTime(lastRunSummary.pace) }}
+                      <span class="stat-unit">/mi</span>
+                    </p>
+                  </ion-col>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="statsChart" color="primary"></ion-icon>
+                    <p class="stat-label">XP Gained</p>
+                    <p class="stat-value">{{ lastRunXp }}</p>
+                  </ion-col>
+                </ion-row>
+              </ion-grid>
+            </ion-card-content>
+          </ion-card>
         </ion-content>
       </ion-modal>
     </template>
@@ -1377,6 +1286,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* Previous styles remain the same... */
 ion-header ion-toolbar {
   --background: #1e3a8a;
 }
@@ -1827,5 +1737,55 @@ ion-progress-bar {
 .stat-icon {
   color: #fbbf24;
   font-size: 1.2rem;
+}
+/* New Styles for Run Summary Modal */
+.summary-modal ion-content {
+  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
+}
+
+.summary-trophy-icon {
+  font-size: 64px;
+  margin-bottom: 0.5rem;
+}
+
+.summary-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+}
+
+.summary-stats-grid {
+  margin-top: 1.5rem;
+}
+
+.summary-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 1rem 0.5rem;
+  min-height: 120px;
+}
+
+.summary-stat-item ion-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.summary-stat-item .stat-label {
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.summary-stat-item .stat-value {
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.summary-stat-item .stat-unit {
+  font-size: 1rem;
 }
 </style>
