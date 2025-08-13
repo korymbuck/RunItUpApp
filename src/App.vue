@@ -1211,7 +1211,7 @@ onMounted(() => {
         </ion-content>
       </ion-modal>
 
-      <!-- NEW Run Summary Modal -->
+      <!-- Run Summary Modal -->
       <ion-modal
         :is-open="isSummaryModalVisible"
         @didDismiss="isSummaryModalVisible = false"
@@ -1231,7 +1231,8 @@ onMounted(() => {
         </ion-header>
         <ion-content class="ion-padding">
           <ion-card class="styled-card" v-if="lastRunSummary">
-            <ion-card-header class="ion-text-center">
+            <!-- 1. REMOVE class="ion-text-center" from here -->
+            <ion-card-header>
               <img
                 src="/icons/boot.svg"
                 alt="RunItUp Logo"
@@ -1737,7 +1738,13 @@ ion-progress-bar {
   color: #fbbf24;
   font-size: 1.2rem;
 }
-/* New Styles for Run Summary Modal */
+/* Styles for Run Summary Modal */
+.summary-modal ion-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .summary-modal ion-content {
   --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
 }
