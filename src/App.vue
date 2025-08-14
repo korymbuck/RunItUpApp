@@ -411,7 +411,7 @@ async function deleteRun(index) {
   await alert.present();
 }
 
-// --- FIREBASE METHODS ---
+// --- FIREBASE METHODS --
 async function handleSignIn() {
   authMessage.value = "";
   try {
