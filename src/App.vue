@@ -416,7 +416,8 @@ async function handleSignIn() {
   authMessage.value = "";
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    closeAuthModal();
+    // Reload the page to refresh the app state
+    window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing in: ${error.message}`;
   }
@@ -440,7 +441,8 @@ async function handleSignUp() {
       displayName_lowercase: displayName.value.toLowerCase(),
       email: email.value.toLowerCase(),
     });
-    closeAuthModal();
+    // Reload the page to refresh the app state
+    window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing up: ${error.message}`;
   }
