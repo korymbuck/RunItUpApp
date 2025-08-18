@@ -1581,6 +1581,15 @@ ion-content {
   color: #ff4961 !important; /* A typical red for destructive actions */
 }
 
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-family: "Orbitron", sans-serif;
+}
+
 .loading-overlay {
   position: fixed;
   top: 0;
