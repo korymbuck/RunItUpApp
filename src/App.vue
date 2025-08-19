@@ -445,7 +445,7 @@ async function handleSignUp() {
       displayName_lowercase: displayName.value.toLowerCase(),
       email: email.value.toLowerCase(),
     });
-    // Reload the page to refresh the app state
+
     window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing up: ${error.message}`;
