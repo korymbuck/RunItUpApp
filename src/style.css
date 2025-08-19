@@ -43,3 +43,23 @@ ion-item {
 ion-content {
   --background: var(--ion-background-color);
 }
+
+/* Run Action Sheet Styles */
+
+.run-action-sheet {
+  --backdrop-opacity: 0.6;
+}
+
+.run-action-sheet .action-sheet-title {
+  color: #e0e0e0;
+  font-weight: 600;
+}
+
+.run-action-sheet .action-sheet-button {
+  color: #ffffff;
+}
+
+.run-action-sheet .action-sheet-button.action-sheet-cancel {
+  color: #ff8a80;
+  font-weight: bold;
+}

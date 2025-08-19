@@ -24,6 +24,8 @@ import {
   IonGrid,
   IonRow,
   IonCol,
+  actionSheetController,
+  IonActionSheet,
 } from "@ionic/vue";
 import {
   home,
@@ -39,6 +41,9 @@ import {
   personOutline,
   mailOutline,
   lockClosedOutline,
+  chevronForward,
+  chevronBack,
+  walk,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -122,6 +127,9 @@ const photoURL = ref(null);
 const newDisplayName = ref("");
 const fileInput = ref(null);
 const authView = ref("signin");
+const isLogRunModalVisible = ref(false);
+const isLiveTrackingModalVisible = ref(false);
+const currentWeekOffset = ref(0); // 0 is current week, -1 is last week, etc.
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -144,6 +152,52 @@ const displayedRuns = computed(() =>
 );
 const lastRunXp = computed(() =>
   lastRunSummary.value ? Math.floor(lastRunSummary.value.distance) : 0
+);
+
+const getStartOfWeek = (date, offset = 0) => {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay() + offset * 7); // Go to Sunday of the offset week
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const currentWeekStart = computed(() =>
+  getStartOfWeek(new Date(), currentWeekOffset.value)
+);
+
+const currentWeekEnd = computed(() => {
+  const end = new Date(currentWeekStart.value);
+  end.setDate(end.getDate() + 7);
+  return end;
+});
+
+const runsForCurrentWeek = computed(() =>
+  runHistory.value.filter((run) => {
+    const runDate = new Date(run.timestamp);
+    return runDate >= currentWeekStart.value && runDate < currentWeekEnd.value;
+  })
+);
+
+const weeklyChartData = computed(() => {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dailyTotals = Array(7).fill(0);
+
+  runsForCurrentWeek.value.forEach((run) => {
+    const dayIndex = new Date(run.timestamp).getDay();
+    dailyTotals[dayIndex] += run.distance;
+  });
+
+  const maxDistance = Math.max(...dailyTotals, 1);
+
+  return days.map((day, index) => ({
+    day,
+    distance: dailyTotals[index],
+    height: (dailyTotals[index] / maxDistance) * 100,
+  }));
+});
+
+const weeklyTotalDistance = computed(() =>
+  runsForCurrentWeek.value.reduce((sum, run) => sum + run.distance, 0)
 );
 
 // --- METHODS ---
@@ -235,6 +289,42 @@ function animateStat(statName, startValue, endValue) {
   );
 }
 
+function goToPreviousWeek() {
+  currentWeekOffset.value--;
+}
+
+function goToNextWeek() {
+  if (currentWeekOffset.value < 0) {
+    currentWeekOffset.value++;
+  }
+}
+
+async function openRunActionSheet() {
+  const actionSheet = await actionSheetController.create({
+    header: "New Run",
+    cssClass: "run-action-sheet",
+    buttons: [
+      {
+        text: "Start Live Tracking",
+        handler: () => {
+          isLiveTrackingModalVisible.value = true;
+        },
+      },
+      {
+        text: "Log a Past Run",
+        handler: () => {
+          isLogRunModalVisible.value = true;
+        },
+      },
+      {
+        text: "Cancel",
+        role: "cancel",
+      },
+    ],
+  });
+  await actionSheet.present();
+}
+
 // --- WORKOUT METHODS ---
 function startWorkout() {
   if (navigator.vibrate) {
@@ -291,8 +381,9 @@ async function stopWorkout() {
     navigator.geolocation.clearWatch(watchId);
   }
   isTracking.value = false;
+  isLiveTrackingModalVisible.value = false;
 
-  if (currentDistance.value > 0) {
+  if (currentDistance.value > 0.01) {
     if (!user.value) {
       alert("Please log in to save your workout data.");
       return;
@@ -358,6 +449,7 @@ async function logRun() {
     hoursInput.value = null;
     minutesInput.value = null;
     secondsInput.value = null;
+    isLogRunModalVisible.value = false;
   } else {
     alert("Please enter a valid distance and time.");
   }
@@ -759,33 +851,38 @@ onMounted(() => {
         <!-- Home Page -->
         <Transition name="fade">
           <div v-if="currentPage === 'home'" class="ion-padding">
-            <!-- Overall Stats Card -->
+            <!-- Overall Stats Card (Redesigned) -->
             <ion-card class="styled-card">
               <ion-card-header>
-                <ion-card-title>Overall Stats</ion-card-title>
+                <ion-card-title>All-Time Stats</ion-card-title>
               </ion-card-header>
               <ion-card-content>
-                <div class="stat-item">
-                  <p class="stat-label">Total Distance</p>
-                  <p class="stat-value">
-                    {{ animatedTotalDistance.toFixed(2) }}
-                    <span class="stat-unit">miles</span>
-                  </p>
-                </div>
-                <div class="stat-item">
-                  <p class="stat-label">Total Time</p>
-                  <p class="stat-value">
-                    {{ formatTime(animatedTotalTime, true) }}
-                  </p>
-                </div>
-                <div class="stat-item">
-                  <p class="stat-label">XP</p>
-                  <p class="stat-value">{{ Math.floor(animatedXp) }}</p>
-                </div>
+                <ion-grid class="summary-stats-grid">
+                  <ion-row>
+                    <ion-col size="6" class="summary-stat-item">
+                      <ion-icon :icon="rocket" color="primary"></ion-icon>
+                      <p class="stat-label">Total Distance</p>
+                      <p class="stat-value small">
+                        {{ animatedTotalDistance.toFixed(2) }}
+                        <span class="stat-unit">mi</span>
+                      </p>
+                    </ion-col>
+                    <ion-col size="6" class="summary-stat-item">
+                      <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                      <p class="stat-label">Total Time</p>
+                      <p class="stat-value small">
+                        {{ formatTime(animatedTotalTime, true) }}
+                      </p>
+                    </ion-col>
+                  </ion-row>
+                </ion-grid>
                 <div class="ion-margin-top">
                   <div class="level-display">
                     <span class="level-emoji">{{ currentLevel.emoji }}</span>
                     <span>Level: {{ currentLevel.name }}</span>
+                    <span style="margin-left: auto; font-size: 1.2rem"
+                      >{{ Math.floor(animatedXp) }} XP</span
+                    >
                   </div>
                   <ion-progress-bar
                     :value="progress"
@@ -793,157 +890,78 @@ onMounted(() => {
                     class="ion-margin-top"
                   ></ion-progress-bar>
                   <p class="xp-text">
-                    {{ Math.floor(xp) }} /
-                    {{ currentLevel.xp === Infinity ? "∞" : currentLevel.xp }}
-                    XP to
-                    {{ nextLevel.name }}
+                    Next Level:
+                    {{ currentLevel.xp === Infinity ? "Max" : currentLevel.xp }}
+                    XP
                   </p>
                 </div>
               </ion-card-content>
             </ion-card>
 
-            <!-- Track a Run Card -->
-            <ion-card class="styled-card">
-              <ion-card-header>
-                <ion-card-title>Track a Run</ion-card-title>
-              </ion-card-header>
+            <!-- Reactive Run Button -->
+            <ion-card class="styled-card run-action-card">
               <ion-card-content>
                 <ion-button
-                  v-if="!isTracking"
                   expand="block"
-                  @click="startWorkout"
-                  class="yellow-button"
-                  >Start Tracking</ion-button
+                  class="yellow-button run-button"
+                  @click="openRunActionSheet"
                 >
-                <div v-if="isTracking">
-                  <div class="tracking-stats">
-                    <div>
-                      <p class="tracking-label">DISTANCE</p>
-                      <p class="tracking-value">
-                        {{ currentDistance.toFixed(2) }} mi
-                      </p>
-                    </div>
-                    <div>
-                      <p class="tracking-label">PACE</p>
-                      <p class="tracking-value">
-                        {{ formatTime(currentPace) }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="tracking-label">TIME</p>
-                      <p class="tracking-value">
-                        {{ formatTime(elapsedTime) }}
-                      </p>
-                    </div>
-                  </div>
+                  <ion-icon :icon="walk" slot="start"></ion-icon>
+                  New Run
+                </ion-button>
+              </ion-card-content>
+            </ion-card>
+
+            <!-- Weekly Activity Chart (Corrected Layout) -->
+            <ion-card class="styled-card">
+              <ion-card-header class="weekly-header">
+                <ion-card-title>Weekly Activity</ion-card-title>
+                <!-- Button container -->
+                <div class="week-nav-buttons">
+                  <ion-button fill="clear" @click="goToPreviousWeek">
+                    <ion-icon slot="icon-only" :icon="chevronBack"></ion-icon>
+                  </ion-button>
                   <ion-button
-                    expand="block"
-                    @click="stopWorkout"
-                    color="danger"
-                    class="ion-margin-top"
-                    >Stop Workout</ion-button
+                    fill="clear"
+                    @click="goToNextWeek"
+                    :disabled="currentWeekOffset === 0"
                   >
+                    <ion-icon
+                      slot="icon-only"
+                      :icon="chevronForward"
+                    ></ion-icon>
+                  </ion-button>
                 </div>
-              </ion-card-content>
-            </ion-card>
-
-            <!-- Log a Run Card -->
-            <ion-card class="styled-card">
-              <ion-card-header>
-                <ion-card-title>Log a Run</ion-card-title>
               </ion-card-header>
-              <ion-card-content>
-                <div class="input-group">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Distance (miles)"
-                    type="number"
-                    v-model="distanceInput"
-                  ></ion-input>
-                  <div style="display: flex; gap: 8px" class="ion-margin-top">
-                    <ion-input
-                      class="styled-input"
-                      placeholder="Hours"
-                      type="number"
-                      v-model="hoursInput"
-                    ></ion-input>
-                    <ion-input
-                      class="styled-input"
-                      placeholder="Minutes"
-                      type="number"
-                      v-model="minutesInput"
-                    ></ion-input>
-                    <ion-input
-                      class="styled-input"
-                      placeholder="Seconds"
-                      type="number"
-                      v-model="secondsInput"
-                    ></ion-input>
-                  </div>
-                </div>
-                <ion-button
-                  expand="block"
-                  @click="logRun"
-                  class="ion-margin-top yellow-button"
-                  >Log Run</ion-button
-                >
-              </ion-card-content>
-            </ion-card>
 
-            <!-- Run History Card -->
-            <ion-card class="styled-card" v-if="runHistory.length > 0">
-              <ion-card-header>
-                <ion-card-title>Run History</ion-card-title>
-              </ion-card-header>
               <ion-card-content>
-                <ion-list lines="none">
+                <!-- Date is now below the header -->
+                <h3 class="week-dates">
+                  {{ currentWeekStart.toLocaleDateString() }} -
+                  {{ new Date(currentWeekEnd - 1).toLocaleDateString() }}
+                </h3>
+
+                <p class="weekly-total">
+                  Total: {{ weeklyTotalDistance.toFixed(2) }} mi
+                </p>
+                <div class="chart-container">
+                  <!-- Chart bars remain the same -->
                   <div
-                    v-for="(run, index) in displayedRuns"
-                    :key="run.id"
-                    class="run-history-item"
+                    v-for="data in weeklyChartData"
+                    :key="data.day"
+                    class="chart-bar-wrapper"
                   >
-                    <div class="run-history-header">
-                      <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
-                      <ion-button
-                        fill="clear"
-                        color="danger"
-                        size="small"
-                        @click="deleteRun(index)"
-                      >
-                        <ion-icon slot="icon-only" :icon="trash"></ion-icon>
-                      </ion-button>
+                    <div
+                      class="chart-bar"
+                      :style="{ height: data.height + '%' }"
+                    >
+                      <span class="bar-value">{{
+                        data.distance.toFixed(1)
+                      }}</span>
                     </div>
-                    <div class="run-history-stats">
-                      <div>
-                        <p class="stat-label">Distance</p>
-                        <p class="stat-value small">
-                          {{ run.distance.toFixed(2) }}
-                          <span class="stat-unit">mi</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p class="stat-label">Time</p>
-                        <p class="stat-value small">
-                          {{ formatTime(run.time, true) }}
-                        </p>
-                      </div>
-                      <div>
-                        <p class="stat-label">Avg Pace</p>
-                        <p class="stat-value small">
-                          {{ formatTime(run.pace) }}
-                        </p>
-                      </div>
-                    </div>
+                    <p class="chart-label">{{ data.day }}</p>
                   </div>
-                </ion-list>
-                <ion-button
-                  v-if="visibleRunsCount < runHistory.length"
-                  @click="showMoreRuns"
-                  expand="block"
-                  fill="outline"
-                  class="ion-margin-top"
-                  >See More</ion-button
-                >
+                </div>
               </ion-card-content>
             </ion-card>
           </div>
@@ -1107,6 +1125,63 @@ onMounted(() => {
                   color="danger"
                   class="ion-margin-top"
                   >Sign Out</ion-button
+                >
+              </ion-card-content>
+            </ion-card>
+
+            <!-- Run History Card -->
+            <ion-card class="styled-card" v-if="runHistory.length > 0">
+              <ion-card-header>
+                <ion-card-title>Run History</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-list lines="none">
+                  <div
+                    v-for="(run, index) in displayedRuns"
+                    :key="run.id"
+                    class="run-history-item"
+                  >
+                    <div class="run-history-header">
+                      <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
+                      <ion-button
+                        fill="clear"
+                        color="danger"
+                        size="small"
+                        @click="deleteRun(index)"
+                      >
+                        <ion-icon slot="icon-only" :icon="trash"></ion-icon>
+                      </ion-button>
+                    </div>
+                    <div class="run-history-stats">
+                      <div>
+                        <p class="stat-label">Distance</p>
+                        <p class="stat-value small">
+                          {{ run.distance.toFixed(2) }}
+                          <span class="stat-unit">mi</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p class="stat-label">Time</p>
+                        <p class="stat-value small">
+                          {{ formatTime(run.time, true) }}
+                        </p>
+                      </div>
+                      <div>
+                        <p class="stat-label">Avg Pace</p>
+                        <p class="stat-value small">
+                          {{ formatTime(run.pace) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </ion-list>
+                <ion-button
+                  v-if="visibleRunsCount < runHistory.length"
+                  @click="showMoreRuns"
+                  expand="block"
+                  fill="outline"
+                  class="ion-margin-top"
+                  >See More</ion-button
                 >
               </ion-card-content>
             </ion-card>
@@ -1329,12 +1404,227 @@ onMounted(() => {
           </ion-card>
         </ion-content>
       </ion-modal>
+
+      <!-- Live Tracking Modal -->
+      <ion-modal :is-open="isLiveTrackingModalVisible">
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Live Run</ion-title>
+            <ion-button
+              slot="end"
+              fill="clear"
+              @click="isLiveTrackingModalVisible = false"
+            >
+              <ion-icon :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-card class="styled-card">
+            <ion-card-header>
+              <ion-card-title>Track a Run</ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <ion-button
+                v-if="!isTracking"
+                expand="block"
+                @click="startWorkout"
+                class="yellow-button"
+                >Start Tracking</ion-button
+              >
+              <div v-if="isTracking">
+                <div class="tracking-stats">
+                  <div>
+                    <p class="tracking-label">DISTANCE</p>
+                    <p class="tracking-value">
+                      {{ currentDistance.toFixed(2) }} mi
+                    </p>
+                  </div>
+                  <div>
+                    <p class="tracking-label">PACE</p>
+                    <p class="tracking-value">
+                      {{ formatTime(currentPace) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="tracking-label">TIME</p>
+                    <p class="tracking-value">
+                      {{ formatTime(elapsedTime) }}
+                    </p>
+                  </div>
+                </div>
+                <ion-button
+                  expand="block"
+                  @click="stopWorkout"
+                  color="danger"
+                  class="ion-margin-top"
+                  >Stop Workout</ion-button
+                >
+              </div>
+            </ion-card-content>
+          </ion-card>
+        </ion-content>
+      </ion-modal>
+
+      <!-- Log Run Modal -->
+      <ion-modal :is-open="isLogRunModalVisible">
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Log a Past Run</ion-title>
+            <ion-button
+              slot="end"
+              fill="clear"
+              @click="isLogRunModalVisible = false"
+            >
+              <ion-icon :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-card class="styled-card">
+            <ion-card-header>
+              <ion-card-title>Log a Run</ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <div class="input-group">
+                <ion-input
+                  class="styled-input"
+                  placeholder="Distance (miles)"
+                  type="number"
+                  v-model="distanceInput"
+                ></ion-input>
+                <div style="display: flex; gap: 8px" class="ion-margin-top">
+                  <ion-input
+                    class="styled-input"
+                    placeholder="Hours"
+                    type="number"
+                    v-model="hoursInput"
+                  ></ion-input>
+                  <ion-input
+                    class="styled-input"
+                    placeholder="Minutes"
+                    type="number"
+                    v-model="minutesInput"
+                  ></ion-input>
+                  <ion-input
+                    class="styled-input"
+                    placeholder="Seconds"
+                    type="number"
+                    v-model="secondsInput"
+                  ></ion-input>
+                </div>
+              </div>
+              <ion-button
+                expand="block"
+                @click="logRun"
+                class="ion-margin-top yellow-button"
+                >Log Run</ion-button
+              >
+            </ion-card-content>
+          </ion-card>
+        </ion-content>
+      </ion-modal>
     </template>
   </ion-app>
 </template>
 
 <style scoped>
-/* Previous styles remain the same... */
+.run-action-card {
+  padding: 8px;
+}
+.run-button {
+  --padding-top: 20px;
+  --padding-bottom: 20px;
+  font-size: 1.2rem;
+}
+.stat-value.small {
+  font-size: clamp(1.2rem, 3.5vw, 1.5rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary-stat-item .stat-value.small {
+  font-size: 1.5rem; /* Override for stats grid */
+}
+.xp-text {
+  font-size: 0.8rem;
+  color: #d1d5db;
+  text-align: right;
+  margin-top: 0.5rem;
+}
+
+/* Weekly Chart Styles */
+.weekly-header {
+  display: flex;
+}
+.weekly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.week-nav-buttons {
+  display: flex;
+  align-items: center;
+}
+.week-dates {
+  color: #ffffff;
+  font-size: 1.1em;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 0.5rem 0;
+}
+.weekly-total {
+  text-align: center;
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.chart-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 150px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.chart-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+.chart-bar {
+  width: 70%;
+  background-color: var(--ion-color-primary);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.5s ease-out;
+  position: relative;
+  min-height: 2px; /* Show a sliver for 0-distance days */
+}
+.bar-value {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.3s;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.chart-bar:hover .bar-value {
+  opacity: 1;
+}
+.chart-label {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+}
+
 ion-header ion-toolbar {
   --background: #1e3a8a;
 }
@@ -1795,7 +2085,9 @@ ion-progress-bar {
   color: #fbbf24;
   font-size: 1.2rem;
 }
+
 /* Styles for Run Summary Modal */
+
 .summary-modal ion-card-header {
   display: flex;
   flex-direction: column;
