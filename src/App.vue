@@ -36,6 +36,9 @@ import {
   timeOutline,
   statsChart,
   speedometer,
+  personOutline,
+  mailOutline,
+  lockClosedOutline,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -118,6 +121,7 @@ const lastRunSummary = ref(null);
 const photoURL = ref(null);
 const newDisplayName = ref("");
 const fileInput = ref(null);
+const authView = ref("signin");
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -1142,43 +1146,76 @@ onMounted(() => {
         class="auth-modal"
       >
         <ion-content class="ion-padding">
-          <h2 class="ion-text-center">Account</h2>
-          <div class="input-group ion-margin-top">
-            <ion-input
-              class="styled-input"
-              placeholder="Username"
-              v-model="displayName"
-            ></ion-input>
-            <ion-input
-              class="styled-input"
-              placeholder="Email"
-              type="email"
-              v-model="email"
-            ></ion-input>
-            <ion-input
-              class="styled-input"
-              placeholder="Password"
-              type="password"
-              v-model="password"
-            ></ion-input>
-          </div>
-          <ion-button
-            expand="block"
-            @click="handleSignIn"
-            class="ion-margin-top"
-            color="primary"
-            >Sign In</ion-button
-          >
-          <ion-button expand="block" @click="handleSignUp" color="success"
-            >Sign Up</ion-button
-          >
-          <p
-            v-if="authMessage"
-            class="ion-text-center ion-padding"
-            style="color: var(--ion-color-warning)"
-          >
-            {{ authMessage }}
-          </p>
+          <ion-card class="styled-card auth-card">
+            <ion-card-header class="auth-card-header">
+              <img src="/icons/boot.svg" alt="RunItUp Logo" class="auth-logo" />
+              <ion-card-title>{{
+                authView === "signin" ? "Welcome Back" : "Create Account"
+              }}</ion-card-title>
+            </ion-card-header>
+
+            <ion-card-content>
+              <!-- Username Input (Only for Sign Up) -->
+              <ion-item
+                v-if="authView === 'signup'"
+                lines="none"
+                class="input-with-icon"
+              >
+                <ion-icon :icon="personOutline" slot="start"></ion-icon>
+                <ion-input
+                  placeholder="Username"
+                  v-model="displayName"
+                ></ion-input>
+              </ion-item>
+
+              <!-- Email Input -->
+              <ion-item lines="none" class="input-with-icon">
+                <ion-icon :icon="mailOutline" slot="start"></ion-icon>
+                <ion-input
+                  placeholder="Email"
+                  type="email"
+                  v-model="email"
+                ></ion-input>
+              </ion-item>
+
+              <!-- Password Input -->
+              <ion-item lines="none" class="input-with-icon">
+                <ion-icon :icon="lockClosedOutline" slot="start"></ion-icon>
+                <ion-input
+                  placeholder="Password"
+                  type="password"
+                  v-model="password"
+                ></ion-input>
+              </ion-item>
+
+              <p
+                v-if="authMessage"
+                class="ion-text-center ion-padding-horizontal"
+                style="color: var(--ion-color-warning); font-size: 0.9rem"
+              >
+                {{ authMessage }}
+              </p>
+
+              <ion-button
+                expand="block"
+                @click="authView === 'signin' ? handleSignIn() : handleSignUp()"
+                class="ion-margin-top yellow-button"
+              >
+                {{ authView === "signin" ? "Sign In" : "Create Account" }}
+              </ion-button>
+
+              <div class="auth-toggle">
+                <p v-if="authView === 'signin'">
+                  Don't have an account?
+                  <a @click="authView = 'signup'">Sign Up</a>
+                </p>
+                <p v-else>
+                  Already have an account?
+                  <a @click="authView = 'signin'">Sign In</a>
+                </p>
+              </div>
+            </ion-card-content>
+          </ion-card>
         </ion-content>
       </ion-modal>
 
@@ -1188,28 +1225,37 @@ onMounted(() => {
         @didDismiss="closeFollowModal()"
         class="auth-modal"
       >
-        <ion-header>
-          <ion-toolbar color="#1e3a8a">
-            <ion-title>Follow a User</ion-title>
-            <ion-button slot="end" fill="clear" @click="closeFollowModal()">
-              <ion-icon :icon="closeCircle"></ion-icon>
-            </ion-button>
-          </ion-toolbar>
-        </ion-header>
         <ion-content class="ion-padding">
-          <ion-input
-            class="styled-input"
-            placeholder="Username"
-            v-model="friendUsername"
-          ></ion-input>
-          <ion-button
-            expand="block"
-            @click="addFriend"
-            class="ion-margin-top"
-            color="success"
-          >
-            Follow User
-          </ion-button>
+          <ion-card class="styled-card auth-card">
+            <ion-card-header class="auth-card-header">
+              <ion-button
+                fill="clear"
+                @click="closeFollowModal()"
+                class="modal-close-button"
+              >
+                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+              </ion-button>
+              <ion-card-title>Follow a User</ion-card-title>
+            </ion-card-header>
+
+            <ion-card-content>
+              <ion-item lines="none" class="input-with-icon">
+                <ion-icon :icon="personOutline" slot="start"></ion-icon>
+                <ion-input
+                  placeholder="Enter username to follow"
+                  v-model="friendUsername"
+                ></ion-input>
+              </ion-item>
+
+              <ion-button
+                expand="block"
+                @click="addFriend"
+                class="ion-margin-top yellow-button"
+              >
+                Follow
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
         </ion-content>
       </ion-modal>
 
@@ -1804,5 +1850,76 @@ ion-progress-bar {
 
 .summary-stat-item .stat-unit {
   font-size: 1rem;
+}
+
+.auth-modal {
+  --background: transparent;
+}
+
+.auth-modal ion-content {
+  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px; /* Or adjust as needed */
+  margin: auto;
+}
+
+.auth-card-header {
+  position: relative;
+  text-align: center;
+  padding-bottom: 1rem;
+}
+
+.auth-card-header ion-card-title {
+  font-size: 1.6rem;
+}
+
+.auth-logo {
+  width: 70px;
+  height: auto;
+  margin: 0 auto 1rem auto;
+}
+
+.input-with-icon {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  --padding-start: 12px;
+  --inner-padding-end: 12px;
+  --min-height: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.input-with-icon ion-icon {
+  font-size: 1.2rem;
+  color: #d1d5db;
+  margin-right: 8px;
+}
+
+.input-with-icon ion-input {
+  color: #fff;
+}
+
+.auth-toggle {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.auth-toggle a {
+  color: var(--ion-color-primary);
+  font-weight: bold;
+  cursor: pointer;
+}
+.modal-close-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  --color: var(--ion-color-medium);
 }
 </style>
