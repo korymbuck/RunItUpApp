@@ -66,6 +66,8 @@ import {
   setDoc,
   onSnapshot,
   getDoc,
+  orderBy,
+  limit,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { gsap } from "gsap";
 import {
@@ -135,6 +137,9 @@ const isLiveTrackingModalVisible = ref(false);
 const currentWeekOffset = ref(0);
 const isEditingProfile = ref(false);
 const isEditProfileModalVisible = ref(false);
+const isUserProfileModalVisible = ref(false);
+const selectedFriendProfile = ref(null);
+const isFetchingFriendRuns = ref(false);
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -353,6 +358,47 @@ async function openSettingsMenu() {
     ],
   });
   await actionSheet.present();
+}
+
+async function fetchRunsForUser(userId) {
+  const runsQuery = query(
+    collection(db, "runs"),
+    where("userId", "==", userId),
+    orderBy("timestamp", "desc"),
+    limit(5) // Fetch the 5 most recent runs
+  );
+  const querySnapshot = await getDocs(runsQuery);
+  return querySnapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+    timestamp: d.data().timestamp.toDate(),
+  }));
+}
+
+async function openUserProfileModal(friend) {
+  isFetchingFriendRuns.value = true;
+  selectedFriendProfile.value = { ...friend, runs: [] };
+  isUserProfileModalVisible.value = true;
+
+  try {
+    const runs = await fetchRunsForUser(friend.uid);
+    if (
+      selectedFriendProfile.value &&
+      selectedFriendProfile.value.uid === friend.uid
+    ) {
+      selectedFriendProfile.value.runs = runs;
+    }
+  } catch (error) {
+    console.error("Error fetching friend's runs:", error);
+    const toast = await toastController.create({
+      message: "Could not load runs for this user.",
+      duration: 3000,
+      color: "danger",
+    });
+    await toast.present();
+  } finally {
+    isFetchingFriendRuns.value = false;
+  }
 }
 
 // --- WORKOUT METHODS ---
@@ -584,7 +630,12 @@ async function handleSignOut() {
 
 async function addFriend() {
   if (!friendUsername.value) {
-    alert("Please enter a username.");
+    const toast = await toastController.create({
+      message: "Please enter a username.",
+      duration: 2000,
+      color: "warning",
+    });
+    await toast.present();
     return;
   }
   const q = query(
@@ -593,21 +644,38 @@ async function addFriend() {
   );
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
-    alert("User not found.");
+    const toast = await toastController.create({
+      message: "User not found.",
+      duration: 2000,
+      color: "danger",
+    });
+    await toast.present();
     return;
   }
   const friendDoc = querySnapshot.docs[0];
   const friendUid = friendDoc.id;
   const friendData = friendDoc.data();
   if (friendUid === user.value.uid) {
-    alert("You can't follow yourself.");
+    const toast = await toastController.create({
+      message: "You can't follow yourself.",
+      duration: 2000,
+      color: "warning",
+    });
+    await toast.present();
     return;
   }
   await setDoc(doc(db, `users/${user.value.uid}/friends`, friendUid), {
     displayName: friendData.displayName,
     followedAt: new Date(),
   });
-  alert(`You are now following ${friendData.displayName}!`);
+
+  const toast = await toastController.create({
+    message: `You are now following ${friendData.displayName}!`,
+    duration: 2000,
+    color: "success",
+  });
+  await toast.present();
+
   closeFollowModal();
 }
 
@@ -1029,8 +1097,12 @@ onMounted(() => {
                   <img
                     :src="friend.photoURL || '/default-avatar.png'"
                     class="friend-avatar"
+                    @click="openUserProfileModal(friend)"
                   />
-                  <div class="friend-details">
+                  <div
+                    class="friend-details"
+                    @click="openUserProfileModal(friend)"
+                  >
                     <h2 class="friend-name">{{ friend.displayName }}</h2>
                     <div v-if="friend.stats" class="friend-level">
                       <span class="level-icon">{{
@@ -1359,6 +1431,131 @@ onMounted(() => {
               >
                 Follow
               </ion-button>
+            </ion-card-content>
+          </ion-card>
+        </ion-content>
+      </ion-modal>
+
+      <!-- User Profile Summary Modal -->
+      <ion-modal
+        :is-open="isUserProfileModalVisible"
+        @didDismiss="isUserProfileModalVisible = false"
+      >
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title v-if="selectedFriendProfile"
+              >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
+            >
+            <ion-buttons slot="end">
+              <ion-button @click="isUserProfileModalVisible = false">
+                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding" v-if="selectedFriendProfile">
+          <!-- Profile Stats Card -->
+          <ion-card class="styled-card profile-stats-card">
+            <ion-card-content>
+              <div class="profile-header">
+                <img
+                  :src="selectedFriendProfile.photoURL || '/default-avatar.png'"
+                  class="profile-picture-main"
+                />
+                <div class="profile-info">
+                  <h2 class="profile-display-name">
+                    {{ selectedFriendProfile.displayName }}
+                  </h2>
+                  <div class="profile-level" v-if="selectedFriendProfile.stats">
+                    <span class="level-icon">{{
+                      getLevelForXp(selectedFriendProfile.stats.xp).emoji
+                    }}</span>
+                    <span
+                      >{{ getLevelForXp(selectedFriendProfile.stats.xp).name }}
+                      -
+                      {{ Math.floor(selectedFriendProfile.stats.xp) }} XP</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <ion-progress-bar
+                v-if="selectedFriendProfile.stats"
+                :value="getProgressForXp(selectedFriendProfile.stats.xp)"
+                color="warning"
+                class="ion-margin-vertical"
+              ></ion-progress-bar>
+              <div
+                class="profile-lifetime-stats"
+                v-if="selectedFriendProfile.stats"
+              >
+                <div class="stat-block">
+                  <p class="stat-title">Total Distance</p>
+                  <p class="stat-value">
+                    {{ selectedFriendProfile.stats.totalDistance.toFixed(2) }}
+                    mi
+                  </p>
+                </div>
+                <div class="stat-block">
+                  <p class="stat-title">Total Time</p>
+                  <p class="stat-value">
+                    {{
+                      formatTime(selectedFriendProfile.stats.totalTime, true)
+                    }}
+                  </p>
+                </div>
+              </div>
+            </ion-card-content>
+          </ion-card>
+
+          <!-- Recent Runs -->
+          <ion-card class="styled-card">
+            <ion-card-header>
+              <ion-card-title>Recent Runs</ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <div v-if="isFetchingFriendRuns" class="ion-text-center">
+                <ion-spinner></ion-spinner>
+                <p>Loading runs...</p>
+              </div>
+              <ion-list
+                lines="none"
+                v-else-if="
+                  selectedFriendProfile.runs &&
+                  selectedFriendProfile.runs.length > 0
+                "
+              >
+                <div
+                  v-for="run in selectedFriendProfile.runs"
+                  :key="run.id"
+                  class="run-history-item"
+                >
+                  <div class="run-history-header">
+                    <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
+                  </div>
+                  <div class="run-history-stats">
+                    <div>
+                      <p class="stat-label">Distance</p>
+                      <p class="stat-value small">
+                        {{ run.distance.toFixed(2) }}
+                        <span class="stat-unit">mi</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p class="stat-label">Time</p>
+                      <p class="stat-value small">
+                        {{ formatTime(run.time, true) }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="stat-label">Avg Pace</p>
+                      <p class="stat-value small">{{ formatTime(run.pace) }}</p>
+                    </div>
+                  </div>
+                </div>
+              </ion-list>
+              <p v-else class="ion-text-center no-data-text">
+                This user has no logged runs yet.
+              </p>
             </ion-card-content>
           </ion-card>
         </ion-content>
