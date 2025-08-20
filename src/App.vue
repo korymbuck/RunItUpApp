@@ -26,6 +26,7 @@ import {
   IonCol,
   actionSheetController,
   IonActionSheet,
+  IonButtons,
 } from "@ionic/vue";
 import {
   home,
@@ -43,7 +44,9 @@ import {
   lockClosedOutline,
   chevronForward,
   chevronBack,
+  chevronDown,
   walk,
+  settingsOutline,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -129,7 +132,9 @@ const fileInput = ref(null);
 const authView = ref("signin");
 const isLogRunModalVisible = ref(false);
 const isLiveTrackingModalVisible = ref(false);
-const currentWeekOffset = ref(0); // 0 is current week, -1 is last week, etc.
+const currentWeekOffset = ref(0);
+const isEditingProfile = ref(false);
+const isEditProfileModalVisible = ref(false);
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -315,6 +320,31 @@ async function openRunActionSheet() {
         handler: () => {
           isLogRunModalVisible.value = true;
         },
+      },
+      {
+        text: "Cancel",
+        role: "cancel",
+      },
+    ],
+  });
+  await actionSheet.present();
+}
+
+async function openSettingsMenu() {
+  const actionSheet = await actionSheetController.create({
+    header: "Settings",
+    cssClass: "run-action-sheet",
+    buttons: [
+      {
+        text: "Edit Profile",
+        handler: () => {
+          isEditProfileModalVisible.value = true;
+        },
+      },
+      {
+        text: "Sign Out",
+        role: "destructive",
+        handler: handleSignOut,
       },
       {
         text: "Cancel",
@@ -830,6 +860,14 @@ onMounted(() => {
       <ion-header class="ion-no-border">
         <ion-toolbar color="#1e3a8a">
           <ion-title>RunItUp</ion-title>
+          <ion-buttons slot="end">
+            <ion-button
+              v-if="currentPage === 'profile'"
+              @click="openSettingsMenu"
+            >
+              <ion-icon slot="icon-only" :icon="settingsOutline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
         </ion-toolbar>
       </ion-header>
 
@@ -1085,47 +1123,39 @@ onMounted(() => {
         <!-- Profile Page -->
         <Transition name="fade">
           <div v-if="currentPage === 'profile'" class="ion-padding">
-            <ion-card class="styled-card">
-              <ion-card-header>
-                <ion-card-title class="ion-text-center"
-                  >Your Profile</ion-card-title
-                >
-              </ion-card-header>
-              <ion-card-content class="ion-text-center">
-                <img
-                  :src="photoURL || '/default-avatar.png'"
-                  class="profile-picture"
-                  @click="triggerFileUpload"
-                />
-                <input
-                  type="file"
-                  @change="handlePictureUpload"
-                  ref="fileInput"
-                  style="display: none"
-                  accept="image/*"
-                />
-                <p><small>Tap picture to change</small></p>
-                <div class="ion-margin-top">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Enter new username"
-                    v-model="newDisplayName"
-                  ></ion-input>
-                  <ion-button
-                    expand="block"
-                    @click="updateUsername"
-                    color="primary"
-                    class="ion-margin-top"
-                    >Save Username</ion-button
-                  >
+            <!-- Main Profile Stats Card -->
+            <ion-card class="styled-card profile-stats-card">
+              <ion-card-content>
+                <div class="profile-header">
+                  <img
+                    :src="photoURL || '/default-avatar.png'"
+                    class="profile-picture-main"
+                  />
+                  <div class="profile-info">
+                    <h2 class="profile-display-name">{{ displayName }}</h2>
+                    <div class="profile-level">
+                      <span class="level-icon">{{ currentLevel.emoji }}</span>
+                      <span
+                        >{{ currentLevel.name }} - {{ Math.floor(xp) }} XP</span
+                      >
+                    </div>
+                  </div>
                 </div>
-                <ion-button
-                  expand="block"
-                  @click="handleSignOut"
-                  color="danger"
-                  class="ion-margin-top"
-                  >Sign Out</ion-button
-                >
+                <ion-progress-bar
+                  :value="progress"
+                  color="warning"
+                  class="ion-margin-vertical"
+                ></ion-progress-bar>
+                <div class="profile-lifetime-stats">
+                  <div class="stat-block">
+                    <p class="stat-title">Total Distance</p>
+                    <p class="stat-value">{{ totalDistance.toFixed(2) }} mi</p>
+                  </div>
+                  <div class="stat-block">
+                    <p class="stat-title">Total Time</p>
+                    <p class="stat-value">{{ formatTime(totalTime, true) }}</p>
+                  </div>
+                </div>
               </ion-card-content>
             </ion-card>
 
@@ -1520,6 +1550,61 @@ onMounted(() => {
                 class="ion-margin-top yellow-button"
                 >Log Run</ion-button
               >
+            </ion-card-content>
+          </ion-card>
+        </ion-content>
+      </ion-modal>
+      <!-- Profile Settings Dropdown -->
+      <ion-modal :is-open="isEditProfileModalVisible">
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Edit Profile</ion-title>
+            <ion-buttons slot="end">
+              <ion-button @click="isEditProfileModalVisible = false">
+                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-card class="styled-card">
+            <ion-card-content>
+              <ion-list>
+                <ion-item lines="none">
+                  <ion-button
+                    expand="block"
+                    fill="outline"
+                    @click="triggerFileUpload"
+                    class="full-width-button"
+                  >
+                    Change Profile Picture
+                  </ion-button>
+                  <input
+                    type="file"
+                    @change="handlePictureUpload"
+                    ref="fileInput"
+                    style="display: none"
+                    accept="image/*"
+                  />
+                </ion-item>
+                <ion-item lines="none">
+                  <ion-input
+                    class="styled-input"
+                    placeholder="Enter new username"
+                    v-model="newDisplayName"
+                  ></ion-input>
+                </ion-item>
+                <ion-item lines="none">
+                  <ion-button
+                    expand="block"
+                    @click="updateUsername"
+                    color="primary"
+                    class="full-width-button"
+                  >
+                    Save Username
+                  </ion-button>
+                </ion-item>
+              </ion-list>
             </ion-card-content>
           </ion-card>
         </ion-content>
@@ -2213,5 +2298,89 @@ ion-progress-bar {
   top: 8px;
   right: 8px;
   --color: var(--ion-color-medium);
+}
+
+/* Profile Page Styles */
+.profile-stats-card {
+  --padding-start: 1rem;
+  --padding-end: 1rem;
+  --padding-top: 1.5rem;
+  --padding-bottom: 1.5rem;
+}
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.profile-picture-main {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--ion-color-primary);
+  flex-shrink: 0;
+}
+.profile-info {
+  flex-grow: 1;
+}
+.profile-display-name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+.profile-level {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: #fbbf24;
+  margin-top: 4px;
+}
+.profile-lifetime-stats {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+}
+.stat-block .stat-title {
+  font-size: 0.8rem;
+  color: #d1d5db;
+  text-transform: uppercase;
+  margin: 0;
+}
+.stat-block .stat-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 4px 0 0 0;
+}
+
+/* Accordion Styles */
+.accordion-card {
+  padding: 0;
+  overflow: hidden;
+}
+.accordion-header {
+  --background: transparent;
+  --padding-start: 1rem;
+  --padding-end: 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.accordion-header ion-label {
+  font-weight: bold;
+}
+.accordion-header ion-icon {
+  transition: transform 0.3s ease-in-out;
+}
+.accordion-header ion-icon.rotate-icon {
+  transform: rotate(180deg);
+}
+.accordion-content {
+  padding: 0 1rem 1rem 1rem;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+.full-width-button {
+  width: 100%;
 }
 </style>
