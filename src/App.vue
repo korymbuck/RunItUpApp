@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import {
   IonApp,
   IonHeader,
@@ -412,9 +412,12 @@ async function openUserProfileModal(friend) {
 
 /* Map Methods */
 
-function initMap() {
+async function initMap() {
   // Guard against re-initialization
   if (map || !mapContainer.value) return;
+
+  // Wait for Vue to update the DOM and the modal to be visible
+  await nextTick();
 
   // Create the map and set a default view
   map = L.map("map").setView([51.505, -0.09], 13); // Default view (e.g., London)
@@ -424,6 +427,13 @@ function initMap() {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
+
+  // Use a short timeout to ensure modal animations are complete, then update the map's size
+  setTimeout(() => {
+    if (map) {
+      map.invalidateSize();
+    }
+  }, 150); // A 150ms delay is usually sufficient
 }
 
 function destroyMap() {
@@ -436,9 +446,8 @@ function destroyMap() {
   }
 }
 
-function initSummaryMap() {
-  // Guard clauses: only run if the modal is open, the container exists,
-  // and the last run actually has route data to display.
+async function initSummaryMap() {
+  // Guard clauses remain the same
   if (
     summaryMap ||
     !summaryMapContainer.value ||
@@ -447,29 +456,38 @@ function initSummaryMap() {
     return;
   }
 
-  // 1. Initialize the map on the 'summary-map' div
+  // NEW: Wait for the DOM to update after the modal is visible
+  await nextTick();
+
+  // Initialize the map on the 'summary-map' div
   summaryMap = L.map("summary-map");
 
-  // 2. Add the tile layer
+  // Add the tile layer
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap",
   }).addTo(summaryMap);
 
-  // 3. Convert our saved route data into the format Leaflet needs
+  // Convert saved route data to Leaflet's format
   const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
 
-  // 4. Create the polyline with the complete route
+  // Create the polyline for the route
   summaryRoutePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
     summaryMap
   );
 
-  // 5. Add markers for start and end points for a nice touch
-  L.marker(routeLatLngs[0]).addTo(summaryMap); // Start marker
-  L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap); // End marker
+  // Add markers for start and end points
+  L.marker(routeLatLngs[0]).addTo(summaryMap);
+  L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap);
 
-  // 6. THIS IS THE KEY: Automatically zoom the map to fit the entire route
-  // The .pad(0.1) adds a 10% padding so the route isn't touching the map edges.
+  // Zoom the map to fit the entire route
   summaryMap.fitBounds(summaryRoutePolyline.getBounds().pad(0.1));
+
+  // NEW: Use a timeout to invalidate the map size after modal animations
+  setTimeout(() => {
+    if (summaryMap) {
+      summaryMap.invalidateSize();
+    }
+  }, 150); // A 150ms delay is usually sufficient
 }
 
 function destroySummaryMap() {
