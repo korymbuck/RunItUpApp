@@ -413,27 +413,42 @@ async function openUserProfileModal(friend) {
 /* Map Methods */
 
 async function initMap() {
-  // Guard against re-initialization
-  if (map || !mapContainer.value) return;
+  // Guard against re-initialization and ensure the container element exists
+  if (map || !mapContainer.value) {
+    return;
+  }
 
-  // Wait for Vue to update the DOM and the modal to be visible
-  await nextTick();
+  try {
+    // Wait for Vue's next DOM update cycle
+    await nextTick();
 
-  // Create the map and set a default view
-  map = L.map("map").setView([51.505, -0.09], 13); // Default view (e.g., London)
+    const container = mapContainer.value;
 
-  // Add the tile layer (the map background)
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
-
-  // Use a short timeout to ensure modal animations are complete, then update the map's size
-  setTimeout(() => {
-    if (map) {
-      map.invalidateSize();
+    // *** KEY CHANGE ***
+    // Check if the container actually has a size. If not, wait and retry.
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      setTimeout(initMap, 100); // Retry after 100ms
+      return;
     }
-  }, 150); // A 150ms delay is usually sufficient
+
+    // Initialize the map on the specific DOM element from the ref
+    map = L.map(container).setView([51.505, -0.09], 13);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // It's still a good idea to call invalidateSize to be safe.
+    // Using requestAnimationFrame waits for the next browser paint.
+    requestAnimationFrame(() => {
+      if (map) {
+        map.invalidateSize(true);
+      }
+    });
+  } catch (error) {
+    console.error("Failed to initialize Leaflet map:", error);
+  }
 }
 
 function destroyMap() {
@@ -447,7 +462,6 @@ function destroyMap() {
 }
 
 async function initSummaryMap() {
-  // Guard clauses remain the same
   if (
     summaryMap ||
     !summaryMapContainer.value ||
@@ -456,38 +470,40 @@ async function initSummaryMap() {
     return;
   }
 
-  // NEW: Wait for the DOM to update after the modal is visible
-  await nextTick();
+  try {
+    await nextTick();
+    const container = summaryMapContainer.value;
 
-  // Initialize the map on the 'summary-map' div
-  summaryMap = L.map("summary-map");
-
-  // Add the tile layer
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap",
-  }).addTo(summaryMap);
-
-  // Convert saved route data to Leaflet's format
-  const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
-
-  // Create the polyline for the route
-  summaryRoutePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
-    summaryMap
-  );
-
-  // Add markers for start and end points
-  L.marker(routeLatLngs[0]).addTo(summaryMap);
-  L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap);
-
-  // Zoom the map to fit the entire route
-  summaryMap.fitBounds(summaryRoutePolyline.getBounds().pad(0.1));
-
-  // NEW: Use a timeout to invalidate the map size after modal animations
-  setTimeout(() => {
-    if (summaryMap) {
-      summaryMap.invalidateSize();
+    // *** APPLY THE SAME LOGIC HERE ***
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      setTimeout(initSummaryMap, 100); // Retry after 100ms
+      return;
     }
-  }, 150); // A 150ms delay is usually sufficient
+
+    summaryMap = L.map(container);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(summaryMap);
+
+    const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
+    summaryRoutePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
+      summaryMap
+    );
+
+    L.marker(routeLatLngs[0]).addTo(summaryMap);
+    L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap);
+
+    summaryMap.fitBounds(summaryRoutePolyline.getBounds().pad(0.1));
+
+    requestAnimationFrame(() => {
+      if (summaryMap) {
+        summaryMap.invalidateSize(true);
+      }
+    });
+  } catch (error) {
+    console.error("Failed to initialize summary map:", error);
+  }
 }
 
 function destroySummaryMap() {
