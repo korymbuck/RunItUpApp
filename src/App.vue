@@ -141,6 +141,15 @@ const isUserProfileModalVisible = ref(false);
 const selectedFriendProfile = ref(null);
 const isFetchingFriendRuns = ref(false);
 
+/*Map State*/
+const mapContainer = ref(null); // To get a reference to the div
+let map = null; // We use 'let' because the map instance itself isn't reactive
+let userMarker = null;
+let routePolyline = null;
+const summaryMapContainer = ref(null);
+let summaryMap = null;
+let summaryRoutePolyline = null;
+
 // --- COMPUTED ---
 const currentLevel = computed(() => {
   for (let i = 0; i < levels.length; i++) {
@@ -401,6 +410,77 @@ async function openUserProfileModal(friend) {
   }
 }
 
+/* Map Methods */
+
+function initMap() {
+  // Guard against re-initialization
+  if (map || !mapContainer.value) return;
+
+  // Create the map and set a default view
+  map = L.map("map").setView([51.505, -0.09], 13); // Default view (e.g., London)
+
+  // Add the tile layer (the map background)
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+}
+
+function destroyMap() {
+  // Clean up the map instance when the modal is closed to prevent errors
+  if (map) {
+    map.remove();
+    map = null;
+    userMarker = null;
+    routePolyline = null;
+  }
+}
+
+function initSummaryMap() {
+  // Guard clauses: only run if the modal is open, the container exists,
+  // and the last run actually has route data to display.
+  if (
+    summaryMap ||
+    !summaryMapContainer.value ||
+    !lastRunSummary.value?.route?.length
+  ) {
+    return;
+  }
+
+  // 1. Initialize the map on the 'summary-map' div
+  summaryMap = L.map("summary-map");
+
+  // 2. Add the tile layer
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap",
+  }).addTo(summaryMap);
+
+  // 3. Convert our saved route data into the format Leaflet needs
+  const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
+
+  // 4. Create the polyline with the complete route
+  summaryRoutePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
+    summaryMap
+  );
+
+  // 5. Add markers for start and end points for a nice touch
+  L.marker(routeLatLngs[0]).addTo(summaryMap); // Start marker
+  L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap); // End marker
+
+  // 6. THIS IS THE KEY: Automatically zoom the map to fit the entire route
+  // The .pad(0.1) adds a 10% padding so the route isn't touching the map edges.
+  summaryMap.fitBounds(summaryRoutePolyline.getBounds().pad(0.1));
+}
+
+function destroySummaryMap() {
+  // Clean up the summary map instance when its modal is closed
+  if (summaryMap) {
+    summaryMap.remove();
+    summaryMap = null;
+    summaryRoutePolyline = null;
+  }
+}
+
 // --- WORKOUT METHODS ---
 function startWorkout() {
   if (navigator.vibrate) {
@@ -421,6 +501,8 @@ function startWorkout() {
     watchId = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        const latlng = [latitude, longitude];
+
         routeCoordinates.value.push({ lat: latitude, lng: longitude });
         if (lastPosition) {
           const dist = calculateDistance(
@@ -436,6 +518,23 @@ function startWorkout() {
           currentDistance.value > 0
             ? elapsedTime.value / currentDistance.value
             : 0;
+
+        // --- MAP UPDATE LOGIC ---
+        if (map) {
+          if (!userMarker) {
+            // First time getting location: create marker, polyline, and center map
+            userMarker = L.marker(latlng).addTo(map);
+            routePolyline = L.polyline([latlng], { color: "#fbbf24" }).addTo(
+              map
+            );
+            map.setView(latlng, 16); // Zoom in on the user
+          } else {
+            // Subsequent updates: move marker and extend polyline
+            userMarker.setLatLng(latlng);
+            routePolyline.addLatLng(latlng);
+            map.panTo(latlng); // Smoothly move the map to keep the marker in view
+          }
+        }
       },
       (error) => {
         alert("Geolocation error: " + error.message);
@@ -1565,6 +1664,8 @@ onMounted(() => {
       <ion-modal
         :is-open="isSummaryModalVisible"
         @didDismiss="isSummaryModalVisible = false"
+        @ionModalDidPresent="initSummaryMap"
+        @ionModalDidDismiss="destroySummaryMap"
         class="summary-modal"
       >
         <ion-header>
@@ -1581,7 +1682,12 @@ onMounted(() => {
         </ion-header>
         <ion-content class="ion-padding">
           <ion-card class="styled-card" v-if="lastRunSummary">
-            <!-- 1. REMOVE class="ion-text-center" from here -->
+            <!-- Map Summary -->
+            <div
+              id="summary-map"
+              ref="summaryMapContainer"
+              v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
+            ></div>
             <ion-card-header>
               <img
                 src="/icons/boot.svg"
@@ -1633,7 +1739,11 @@ onMounted(() => {
       </ion-modal>
 
       <!-- Live Tracking Modal -->
-      <ion-modal :is-open="isLiveTrackingModalVisible">
+      <ion-modal
+        :is-open="isLiveTrackingModalVisible"
+        @ionModalDidPresent="initMap"
+        @ionModalDidDismiss="destroyMap"
+      >
         <ion-header>
           <ion-toolbar color="#1e3a8a">
             <ion-title>Live Run</ion-title>
@@ -1651,6 +1761,7 @@ onMounted(() => {
             <ion-card-header>
               <ion-card-title>Track a Run</ion-card-title>
             </ion-card-header>
+            <div id="map" ref="mapContainer"></div>
             <ion-card-content>
               <ion-button
                 v-if="!isTracking"
@@ -2579,5 +2690,26 @@ ion-progress-bar {
 }
 .full-width-button {
   width: 100%;
+}
+
+/* Map Styles */
+#map {
+  height: 250px; /* Or any height you prefer */
+  width: 100%;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+}
+
+#summary-map {
+  height: 200px; /* Adjust height as needed */
+  width: 100%;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  /* If inside a card with padding, you might need negative margins */
+  margin-left: -1rem;
+  margin-right: -1rem;
+  margin-top: -1rem;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 </style>
