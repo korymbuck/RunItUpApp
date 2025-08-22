@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import {
   IonApp,
   IonHeader,
@@ -149,6 +149,29 @@ let routePolyline = null;
 const summaryMapContainer = ref(null);
 let summaryMap = null;
 let summaryRoutePolyline = null;
+
+// --- WATCHERS ---
+
+watch(isLiveTrackingModalVisible, (isNowVisible) => {
+  // This function will run whenever 'isLiveTrackingModalVisible' changes.
+  if (isNowVisible) {
+    // When the modal is set to open, wait a brief moment for the
+    // modal's animation to start and for the DOM to be ready.
+    // Then, call initMap.
+    setTimeout(() => {
+      initMap();
+    }, 200); // 200ms is a safe delay to ensure the container exists.
+  }
+});
+
+watch(isSummaryModalVisible, (isNowVisible) => {
+  if (isNowVisible) {
+    // Apply the same logic for the summary map
+    setTimeout(() => {
+      initSummaryMap();
+    }, 200);
+  }
+});
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -413,63 +436,30 @@ async function openUserProfileModal(friend) {
 /* Map Methods */
 
 async function initMap() {
-  // --- DEBUG STEP 1: Check if the Leaflet library (L) is available at all.
-  console.log("Checking for Leaflet library (L):", typeof L);
-  if (typeof L === "undefined") {
-    console.error(
-      "FATAL: Leaflet library (L) is not loaded. Check the script tags in your index.html."
-    );
+  // Guard against re-initialization and ensure container exists.
+  if (map || !mapContainer.value) {
+    // If the container isn't ready, the timeout in the watcher will handle it.
+    // We can add a log here for extra debugging if needed.
+    if (!mapContainer.value) {
+      console.error("initMap called, but mapContainer div not found!");
+    }
     return;
   }
 
-  // Guard against re-initialization
-  if (map) {
-    console.log("Map already initialized, skipping.");
-    return;
-  }
-
-  // Wait for Vue to update the DOM after the modal is shown
-  await nextTick();
-
-  // --- DEBUG STEP 2: Check if Vue's ref has found the DOM element.
-  const container = mapContainer.value;
-  console.log("Attempting to find map container element:", container);
-
-  if (!container) {
-    console.error(
-      "FATAL: The ref 'mapContainer' could not find the <div id='map'>. The map cannot be initialized."
-    );
-    // Let's try again in a moment, as a last resort.
-    setTimeout(initMap, 200);
-    return;
-  }
-
-  // --- DEBUG STEP 3: Wrap the initialization in a try...catch to expose any hidden Leaflet errors.
   try {
-    console.log(
-      "Container found. Attempting to initialize L.map(container)..."
-    );
-    map = L.map(container).setView([51.505, -0.09], 13);
-
+    console.log("Container found. Initializing map...");
+    map = L.map(mapContainer.value).setView([51.505, -0.09], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
 
-    console.log("SUCCESS: Map object was created. Now invalidating size.");
-
-    // Use requestAnimationFrame to ensure the browser is ready to paint
+    // Final check to ensure size is correct after initialization.
     requestAnimationFrame(() => {
-      if (map) {
-        map.invalidateSize();
-        console.log("Map size invalidated on next frame.");
-      }
+      if (map) map.invalidateSize();
     });
   } catch (error) {
-    console.error(
-      "CRITICAL: Leaflet L.map() function failed with an error:",
-      error
-    );
+    console.error("Error during Leaflet initialization:", error);
   }
 }
 
@@ -492,37 +482,24 @@ async function initSummaryMap() {
     return;
   }
 
-  await nextTick();
-  const container = summaryMapContainer.value;
-  if (!container) {
-    console.error("Summary map container ref is not available.");
-    return;
-  }
-
   try {
-    summaryMap = L.map(container);
+    summaryMap = L.map(summaryMapContainer.value);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap",
     }).addTo(summaryMap);
 
     const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
-    const routePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
+    const polyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
       summaryMap
     );
 
-    L.marker(routeLatLngs[0]).addTo(summaryMap);
-    L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap);
+    summaryMap.fitBounds(polyline.getBounds().pad(0.1));
 
-    summaryMap.fitBounds(routePolyline.getBounds().pad(0.1));
-
-    // *** APPLY THE SAME CRITICAL FIX HERE ***
     requestAnimationFrame(() => {
-      if (summaryMap) {
-        summaryMap.invalidateSize();
-      }
+      if (summaryMap) summaryMap.invalidateSize();
     });
   } catch (error) {
-    console.error("Error initializing summary map:", error);
+    console.error("Error during summary map initialization:", error);
   }
 }
 
@@ -1718,7 +1695,6 @@ onMounted(() => {
       <ion-modal
         :is-open="isSummaryModalVisible"
         @didDismiss="isSummaryModalVisible = false"
-        @ionModalDidPresent="initSummaryMap"
         @ionModalDidDismiss="destroySummaryMap"
         class="summary-modal"
       >
@@ -1795,7 +1771,6 @@ onMounted(() => {
       <!-- Live Tracking Modal -->
       <ion-modal
         :is-open="isLiveTrackingModalVisible"
-        @ionModalDidPresent="initMap"
         @ionModalDidDismiss="destroyMap"
       >
         <ion-header>
