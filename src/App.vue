@@ -140,6 +140,11 @@ const isEditProfileModalVisible = ref(false);
 const isUserProfileModalVisible = ref(false);
 const selectedFriendProfile = ref(null);
 const isFetchingFriendRuns = ref(false);
+// State for hold-to-stop button
+const isHoldingStop = ref(false);
+const holdProgress = ref(0);
+let holdTimer = null;
+let progressInterval = null;
 
 /*Map State*/
 const mapContainer = ref(null); // To get a reference to the div
@@ -711,6 +716,55 @@ async function deleteRun(index) {
 
   // Present the alert
   await alert.present();
+}
+
+// Hold To Stop Button Methods
+
+function startHoldStop() {
+  if (isHoldingStop.value) return; // Prevent multiple triggers
+  isHoldingStop.value = true;
+  holdProgress.value = 0;
+
+  const holdDuration = 2000; // 2 seconds
+  const intervalDuration = 10; // Update progress smoothly
+
+  // Set a timeout that will trigger the actual stopWorkout function
+  holdTimer = setTimeout(() => {
+    stopWorkout();
+    // Reset the state after the action is complete
+    isHoldingStop.value = false;
+    holdProgress.value = 0;
+    clearInterval(progressInterval);
+  }, holdDuration);
+
+  // Set an interval to update the visual progress bar
+  progressInterval = setInterval(() => {
+    holdProgress.value += intervalDuration / holdDuration;
+    if (holdProgress.value >= 1) {
+      clearInterval(progressInterval);
+    }
+  }, intervalDuration);
+}
+
+function cancelHoldStop() {
+  // If the user lets go before 2 seconds, clear the timers
+  clearTimeout(holdTimer);
+  clearInterval(progressInterval);
+  holdTimer = null;
+  progressInterval = null;
+  isHoldingStop.value = false;
+
+  // Animate the progress bar back to 0 for a smooth visual effect
+  gsap.to(
+    { value: holdProgress.value },
+    {
+      value: 0,
+      duration: 0.3,
+      onUpdate: function () {
+        holdProgress.value = this.targets()[0].value;
+      },
+    }
+  );
 }
 
 // --- FIREBASE METHODS --
@@ -1820,13 +1874,21 @@ onMounted(() => {
                     </p>
                   </div>
                 </div>
-                <ion-button
-                  expand="block"
-                  @click="stopWorkout"
-                  color="danger"
-                  class="ion-margin-top"
-                  >Stop Workout</ion-button
+                <!-- Hold to Stop Button -->
+                <div
+                  class="hold-to-stop-button ion-margin-top"
+                  @mousedown="startHoldStop"
+                  @mouseup="cancelHoldStop"
+                  @mouseleave="cancelHoldStop"
+                  @touchstart.prevent="startHoldStop"
+                  @touchend="cancelHoldStop"
                 >
+                  <div
+                    class="hold-progress"
+                    :style="{ transform: `scaleX(${holdProgress})` }"
+                  ></div>
+                  <span class="hold-text">HOLD TO STOP</span>
+                </div>
               </div>
             </ion-card-content>
           </ion-card>
@@ -2736,5 +2798,45 @@ ion-progress-bar {
   width: auto;
   border-radius: 12px;
   margin: 1rem;
+}
+
+/* Hold-to-Stop Button Styles */
+.hold-to-stop-button {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  background-color: var(--ion-color-danger-shade);
+  border-radius: var(--ion-border-radius-lg, 12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none; /* Prevent text selection while holding */
+  -webkit-user-select: none;
+  transition: background-color 0.2s;
+}
+
+.hold-to-stop-button:active {
+  background-color: var(--ion-color-danger);
+}
+
+.hold-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--ion-color-danger);
+  transform-origin: left;
+  transform: scaleX(0); /* Starts with no fill */
+}
+
+.hold-text {
+  position: relative;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1rem;
+  z-index: 1;
 }
 </style>
