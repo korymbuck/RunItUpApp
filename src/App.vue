@@ -413,25 +413,19 @@ async function openUserProfileModal(friend) {
 /* Map Methods */
 
 async function initMap() {
-  // Guard against re-initialization and ensure the container element exists
-  if (map || !mapContainer.value) {
+  if (map || !mapContainer.value) return;
+
+  // Wait for Vue's DOM update cycle
+  await nextTick();
+
+  const container = mapContainer.value;
+  if (!container) {
+    console.error("Map container ref is not available.");
     return;
   }
 
   try {
-    // Wait for Vue's next DOM update cycle
-    await nextTick();
-
-    const container = mapContainer.value;
-
-    // *** KEY CHANGE ***
-    // Check if the container actually has a size. If not, wait and retry.
-    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-      setTimeout(initMap, 100); // Retry after 100ms
-      return;
-    }
-
-    // Initialize the map on the specific DOM element from the ref
+    // Initialize the map. It's okay if the size is initially wrong.
     map = L.map(container).setView([51.505, -0.09], 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -439,15 +433,16 @@ async function initMap() {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // It's still a good idea to call invalidateSize to be safe.
-    // Using requestAnimationFrame waits for the next browser paint.
+    // *** THE CRITICAL FIX ***
+    // We schedule map.invalidateSize() to run just before the browser's
+    // next repaint. This guarantees the modal and its contents are fully rendered.
     requestAnimationFrame(() => {
       if (map) {
-        map.invalidateSize(true);
+        map.invalidateSize();
       }
     });
   } catch (error) {
-    console.error("Failed to initialize Leaflet map:", error);
+    console.error("Error initializing Leaflet map:", error);
   }
 }
 
@@ -470,39 +465,37 @@ async function initSummaryMap() {
     return;
   }
 
+  await nextTick();
+  const container = summaryMapContainer.value;
+  if (!container) {
+    console.error("Summary map container ref is not available.");
+    return;
+  }
+
   try {
-    await nextTick();
-    const container = summaryMapContainer.value;
-
-    // *** APPLY THE SAME LOGIC HERE ***
-    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
-      setTimeout(initSummaryMap, 100); // Retry after 100ms
-      return;
-    }
-
     summaryMap = L.map(container);
-
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap",
     }).addTo(summaryMap);
 
     const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
-    summaryRoutePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
+    const routePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
       summaryMap
     );
 
     L.marker(routeLatLngs[0]).addTo(summaryMap);
     L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap);
 
-    summaryMap.fitBounds(summaryRoutePolyline.getBounds().pad(0.1));
+    summaryMap.fitBounds(routePolyline.getBounds().pad(0.1));
 
+    // *** APPLY THE SAME CRITICAL FIX HERE ***
     requestAnimationFrame(() => {
       if (summaryMap) {
-        summaryMap.invalidateSize(true);
+        summaryMap.invalidateSize();
       }
     });
   } catch (error) {
-    console.error("Failed to initialize summary map:", error);
+    console.error("Error initializing summary map:", error);
   }
 }
 
