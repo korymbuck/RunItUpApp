@@ -413,19 +413,42 @@ async function openUserProfileModal(friend) {
 /* Map Methods */
 
 async function initMap() {
-  if (map || !mapContainer.value) return;
-
-  // Wait for Vue's DOM update cycle
-  await nextTick();
-
-  const container = mapContainer.value;
-  if (!container) {
-    console.error("Map container ref is not available.");
+  // --- DEBUG STEP 1: Check if the Leaflet library (L) is available at all.
+  console.log("Checking for Leaflet library (L):", typeof L);
+  if (typeof L === "undefined") {
+    console.error(
+      "FATAL: Leaflet library (L) is not loaded. Check the script tags in your index.html."
+    );
     return;
   }
 
+  // Guard against re-initialization
+  if (map) {
+    console.log("Map already initialized, skipping.");
+    return;
+  }
+
+  // Wait for Vue to update the DOM after the modal is shown
+  await nextTick();
+
+  // --- DEBUG STEP 2: Check if Vue's ref has found the DOM element.
+  const container = mapContainer.value;
+  console.log("Attempting to find map container element:", container);
+
+  if (!container) {
+    console.error(
+      "FATAL: The ref 'mapContainer' could not find the <div id='map'>. The map cannot be initialized."
+    );
+    // Let's try again in a moment, as a last resort.
+    setTimeout(initMap, 200);
+    return;
+  }
+
+  // --- DEBUG STEP 3: Wrap the initialization in a try...catch to expose any hidden Leaflet errors.
   try {
-    // Initialize the map. It's okay if the size is initially wrong.
+    console.log(
+      "Container found. Attempting to initialize L.map(container)..."
+    );
     map = L.map(container).setView([51.505, -0.09], 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -433,16 +456,20 @@ async function initMap() {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
-    // *** THE CRITICAL FIX ***
-    // We schedule map.invalidateSize() to run just before the browser's
-    // next repaint. This guarantees the modal and its contents are fully rendered.
+    console.log("SUCCESS: Map object was created. Now invalidating size.");
+
+    // Use requestAnimationFrame to ensure the browser is ready to paint
     requestAnimationFrame(() => {
       if (map) {
         map.invalidateSize();
+        console.log("Map size invalidated on next frame.");
       }
     });
   } catch (error) {
-    console.error("Error initializing Leaflet map:", error);
+    console.error(
+      "CRITICAL: Leaflet L.map() function failed with an error:",
+      error
+    );
   }
 }
 
