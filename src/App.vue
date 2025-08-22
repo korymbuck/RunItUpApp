@@ -2723,22 +2723,18 @@ ion-progress-bar {
 
 /* Map Styles */
 #map {
-  height: 250px; /* Or any height you prefer */
-  width: 100%;
+  height: 250px;
+  width: auto;
   margin-bottom: 1rem;
   border-radius: 12px;
+  margin-left: 16px;
+  margin-right: 16px;
 }
 
 #summary-map {
-  height: 200px; /* Adjust height as needed */
+  height: 200px;
   width: 100%;
   margin-bottom: 1.5rem;
   border-radius: 12px;
-  /* If inside a card with padding, you might need negative margins */
-  margin-left: -1rem;
-  margin-right: -1rem;
-  margin-top: -1rem;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 </style>
