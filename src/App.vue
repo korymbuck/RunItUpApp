@@ -2733,8 +2733,8 @@ ion-progress-bar {
 
 #summary-map {
   height: 200px;
-  width: 100%;
-  margin-bottom: 1.5rem;
+  width: auto;
   border-radius: 12px;
+  margin: 1rem;
 }
 </style>
