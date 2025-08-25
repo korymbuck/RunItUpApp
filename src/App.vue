@@ -456,7 +456,7 @@ async function initMap() {
     console.log("Container found. Initializing map...");
     map = L.map(mapContainer.value).setView([51.505, -0.09], 13);
     L.tileLayer(
-      "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      "https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}",
       {
         attribution:
           '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -498,7 +498,7 @@ async function initSummaryMap() {
   try {
     summaryMap = L.map(summaryMapContainer.value);
     L.tileLayer(
-      "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      "https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}",
       {
         attribution:
           '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -507,9 +507,10 @@ async function initSummaryMap() {
     ).addTo(summaryMap);
 
     const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
-    const polyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
-      summaryMap
-    );
+    const polyline = L.polyline(routeLatLngs, {
+      color: "#fbbf24",
+      weight: 8,
+    }).addTo(summaryMap);
 
     summaryMap.fitBounds(polyline.getBounds().pad(0.1));
 
@@ -573,9 +574,10 @@ function startWorkout() {
           if (!userMarker) {
             // First time getting location: create marker, polyline, and center map
             userMarker = L.marker(latlng).addTo(map);
-            routePolyline = L.polyline([latlng], { color: "#fbbf24" }).addTo(
-              map
-            );
+            routePolyline = L.polyline([latlng], {
+              color: "#fbbf24",
+              weight: 8,
+            }).addTo(map);
             map.setView(latlng, 16); // Zoom in on the user
           } else {
             // Subsequent updates: move marker and extend polyline
