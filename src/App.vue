@@ -443,21 +443,26 @@ async function openUserProfileModal(friend) {
 async function initMap() {
   // Guard against re-initialization and ensure container exists.
   if (map || !mapContainer.value) {
-    // If the container isn't ready, the timeout in the watcher will handle it.
-    // We can add a log here for extra debugging if needed.
     if (!mapContainer.value) {
       console.error("initMap called, but mapContainer div not found!");
     }
     return;
   }
 
+  const mapboxAccessToken =
+    "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA"; // <-- PASTE YOUR TOKEN HERE
+
   try {
     console.log("Container found. Initializing map...");
     map = L.map(mapContainer.value).setView([51.505, -0.09], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+    L.tileLayer(
+      "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      {
+        attribution:
+          '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        accessToken: mapboxAccessToken,
+      }
+    ).addTo(map);
 
     // Final check to ensure size is correct after initialization.
     requestAnimationFrame(() => {
@@ -487,11 +492,19 @@ async function initSummaryMap() {
     return;
   }
 
+  const mapboxAccessToken =
+    "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA"; // <-- PASTE YOUR TOKEN HERE
+
   try {
     summaryMap = L.map(summaryMapContainer.value);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(summaryMap);
+    L.tileLayer(
+      "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      {
+        attribution:
+          '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        accessToken: mapboxAccessToken,
+      }
+    ).addTo(summaryMap);
 
     const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
     const polyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
@@ -2800,25 +2813,27 @@ ion-progress-bar {
   margin: 1rem;
 }
 
-/* Hold-to-Stop Button Styles */
 .hold-to-stop-button {
   position: relative;
   width: 100%;
   height: 50px;
-  background-color: var(--ion-color-danger-shade);
+
+  background-color: #4d0f0f;
   border-radius: var(--ion-border-radius-lg, 12px);
+  border: 1px solid var(--ion-color-danger-tint);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
-  user-select: none; /* Prevent text selection while holding */
+  user-select: none;
   -webkit-user-select: none;
-  transition: background-color 0.2s;
+
+  transition: transform 0.1s ease-out;
 }
 
 .hold-to-stop-button:active {
-  background-color: var(--ion-color-danger);
+  transform: scale(0.98);
 }
 
 .hold-progress {
@@ -2827,9 +2842,10 @@ ion-progress-bar {
   left: 0;
   width: 100%;
   height: 100%;
+
   background-color: var(--ion-color-danger);
   transform-origin: left;
-  transform: scaleX(0); /* Starts with no fill */
+  transform: scaleX(0);
 }
 
 .hold-text {
@@ -2838,5 +2854,11 @@ ion-progress-bar {
   font-weight: bold;
   font-size: 1rem;
   z-index: 1;
+
+  transition: letter-spacing 0.3s ease;
+}
+
+.hold-to-stop-button.is-holding .hold-text {
+  letter-spacing: 1.5px;
 }
 </style>

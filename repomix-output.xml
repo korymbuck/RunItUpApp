@@ -2316,7 +2316,7 @@ ion-content {
 
 <file path="src/App.vue">
 <script setup>
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import {
   IonApp,
   IonHeader,
@@ -2457,6 +2457,11 @@ const isEditProfileModalVisible = ref(false);
 const isUserProfileModalVisible = ref(false);
 const selectedFriendProfile = ref(null);
 const isFetchingFriendRuns = ref(false);
+// State for hold-to-stop button
+const isHoldingStop = ref(false);
+const holdProgress = ref(0);
+let holdTimer = null;
+let progressInterval = null;
 
 /*Map State*/
 const mapContainer = ref(null); // To get a reference to the div
@@ -2466,6 +2471,29 @@ let routePolyline = null;
 const summaryMapContainer = ref(null);
 let summaryMap = null;
 let summaryRoutePolyline = null;
+
+// --- WATCHERS ---
+
+watch(isLiveTrackingModalVisible, (isNowVisible) => {
+  // This function will run whenever 'isLiveTrackingModalVisible' changes.
+  if (isNowVisible) {
+    // When the modal is set to open, wait a brief moment for the
+    // modal's animation to start and for the DOM to be ready.
+    // Then, call initMap.
+    setTimeout(() => {
+      initMap();
+    }, 200); // 200ms is a safe delay to ensure the container exists.
+  }
+});
+
+watch(isSummaryModalVisible, (isNowVisible) => {
+  if (isNowVisible) {
+    // Apply the same logic for the summary map
+    setTimeout(() => {
+      initSummaryMap();
+    }, 200);
+  }
+});
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -2730,27 +2758,31 @@ async function openUserProfileModal(friend) {
 /* Map Methods */
 
 async function initMap() {
-  // Guard against re-initialization
-  if (map || !mapContainer.value) return;
-
-  // Wait for Vue to update the DOM and the modal to be visible
-  await nextTick();
-
-  // Create the map and set a default view
-  map = L.map("map").setView([51.505, -0.09], 13); // Default view (e.g., London)
-
-  // Add the tile layer (the map background)
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
-
-  // Use a short timeout to ensure modal animations are complete, then update the map's size
-  setTimeout(() => {
-    if (map) {
-      map.invalidateSize();
+  // Guard against re-initialization and ensure container exists.
+  if (map || !mapContainer.value) {
+    // If the container isn't ready, the timeout in the watcher will handle it.
+    // We can add a log here for extra debugging if needed.
+    if (!mapContainer.value) {
+      console.error("initMap called, but mapContainer div not found!");
     }
-  }, 150); // A 150ms delay is usually sufficient
+    return;
+  }
+
+  try {
+    console.log("Container found. Initializing map...");
+    map = L.map(mapContainer.value).setView([51.505, -0.09], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+
+    // Final check to ensure size is correct after initialization.
+    requestAnimationFrame(() => {
+      if (map) map.invalidateSize();
+    });
+  } catch (error) {
+    console.error("Error during Leaflet initialization:", error);
+  }
 }
 
 function destroyMap() {
@@ -2764,7 +2796,6 @@ function destroyMap() {
 }
 
 async function initSummaryMap() {
-  // Guard clauses remain the same
   if (
     summaryMap ||
     !summaryMapContainer.value ||
@@ -2773,38 +2804,25 @@ async function initSummaryMap() {
     return;
   }
 
-  // NEW: Wait for the DOM to update after the modal is visible
-  await nextTick();
+  try {
+    summaryMap = L.map(summaryMapContainer.value);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(summaryMap);
 
-  // Initialize the map on the 'summary-map' div
-  summaryMap = L.map("summary-map");
+    const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
+    const polyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
+      summaryMap
+    );
 
-  // Add the tile layer
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap",
-  }).addTo(summaryMap);
+    summaryMap.fitBounds(polyline.getBounds().pad(0.1));
 
-  // Convert saved route data to Leaflet's format
-  const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
-
-  // Create the polyline for the route
-  summaryRoutePolyline = L.polyline(routeLatLngs, { color: "#fbbf24" }).addTo(
-    summaryMap
-  );
-
-  // Add markers for start and end points
-  L.marker(routeLatLngs[0]).addTo(summaryMap);
-  L.marker(routeLatLngs[routeLatLngs.length - 1]).addTo(summaryMap);
-
-  // Zoom the map to fit the entire route
-  summaryMap.fitBounds(summaryRoutePolyline.getBounds().pad(0.1));
-
-  // NEW: Use a timeout to invalidate the map size after modal animations
-  setTimeout(() => {
-    if (summaryMap) {
-      summaryMap.invalidateSize();
-    }
-  }, 150); // A 150ms delay is usually sufficient
+    requestAnimationFrame(() => {
+      if (summaryMap) summaryMap.invalidateSize();
+    });
+  } catch (error) {
+    console.error("Error during summary map initialization:", error);
+  }
 }
 
 function destroySummaryMap() {
@@ -3015,6 +3033,55 @@ async function deleteRun(index) {
 
   // Present the alert
   await alert.present();
+}
+
+// Hold To Stop Button Methods
+
+function startHoldStop() {
+  if (isHoldingStop.value) return; // Prevent multiple triggers
+  isHoldingStop.value = true;
+  holdProgress.value = 0;
+
+  const holdDuration = 2000; // 2 seconds
+  const intervalDuration = 10; // Update progress smoothly
+
+  // Set a timeout that will trigger the actual stopWorkout function
+  holdTimer = setTimeout(() => {
+    stopWorkout();
+    // Reset the state after the action is complete
+    isHoldingStop.value = false;
+    holdProgress.value = 0;
+    clearInterval(progressInterval);
+  }, holdDuration);
+
+  // Set an interval to update the visual progress bar
+  progressInterval = setInterval(() => {
+    holdProgress.value += intervalDuration / holdDuration;
+    if (holdProgress.value >= 1) {
+      clearInterval(progressInterval);
+    }
+  }, intervalDuration);
+}
+
+function cancelHoldStop() {
+  // If the user lets go before 2 seconds, clear the timers
+  clearTimeout(holdTimer);
+  clearInterval(progressInterval);
+  holdTimer = null;
+  progressInterval = null;
+  isHoldingStop.value = false;
+
+  // Animate the progress bar back to 0 for a smooth visual effect
+  gsap.to(
+    { value: holdProgress.value },
+    {
+      value: 0,
+      duration: 0.3,
+      onUpdate: function () {
+        holdProgress.value = this.targets()[0].value;
+      },
+    }
+  );
 }
 
 // --- FIREBASE METHODS --
@@ -3999,7 +4066,6 @@ onMounted(() => {
       <ion-modal
         :is-open="isSummaryModalVisible"
         @didDismiss="isSummaryModalVisible = false"
-        @ionModalDidPresent="initSummaryMap"
         @ionModalDidDismiss="destroySummaryMap"
         class="summary-modal"
       >
@@ -4076,7 +4142,6 @@ onMounted(() => {
       <!-- Live Tracking Modal -->
       <ion-modal
         :is-open="isLiveTrackingModalVisible"
-        @ionModalDidPresent="initMap"
         @ionModalDidDismiss="destroyMap"
       >
         <ion-header>
@@ -4126,13 +4191,21 @@ onMounted(() => {
                     </p>
                   </div>
                 </div>
-                <ion-button
-                  expand="block"
-                  @click="stopWorkout"
-                  color="danger"
-                  class="ion-margin-top"
-                  >Stop Workout</ion-button
+                <!-- Hold to Stop Button -->
+                <div
+                  class="hold-to-stop-button ion-margin-top"
+                  @mousedown="startHoldStop"
+                  @mouseup="cancelHoldStop"
+                  @mouseleave="cancelHoldStop"
+                  @touchstart.prevent="startHoldStop"
+                  @touchend="cancelHoldStop"
                 >
+                  <div
+                    class="hold-progress"
+                    :style="{ transform: `scaleX(${holdProgress})` }"
+                  ></div>
+                  <span class="hold-text">HOLD TO STOP</span>
+                </div>
               </div>
             </ion-card-content>
           </ion-card>
@@ -5029,23 +5102,68 @@ ion-progress-bar {
 
 /* Map Styles */
 #map {
-  height: 250px; /* Or any height you prefer */
-  width: 100%;
+  height: 250px;
+  width: auto;
   margin-bottom: 1rem;
   border-radius: 12px;
+  margin-left: 16px;
+  margin-right: 16px;
 }
 
 #summary-map {
-  height: 200px; /* Adjust height as needed */
-  width: 100%;
-  margin-bottom: 1.5rem;
+  height: 200px;
+  width: auto;
   border-radius: 12px;
-  /* If inside a card with padding, you might need negative margins */
-  margin-left: -1rem;
-  margin-right: -1rem;
-  margin-top: -1rem;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  margin: 1rem;
+}
+
+.hold-to-stop-button {
+  position: relative;
+  width: 100%;
+  height: 50px;
+
+  background-color: #4d0f0f;
+  border-radius: var(--ion-border-radius-lg, 12px);
+  border: 1px solid var(--ion-color-danger-tint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+
+  transition: transform 0.1s ease-out;
+}
+
+.hold-to-stop-button:active {
+  transform: scale(0.98);
+}
+
+.hold-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  background-color: var(--ion-color-danger);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.hold-text {
+  position: relative;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1rem;
+  z-index: 1;
+
+  transition: letter-spacing 0.3s ease;
+}
+
+.hold-to-stop-button.is-holding .hold-text {
+  letter-spacing: 1.5px;
 }
 </style>
 </file>
