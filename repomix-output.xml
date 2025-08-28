@@ -1240,58 +1240,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 </file>
 
-<file path="ios/App/App/Info.plist">
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
-	<key>CFBundleDisplayName</key>
-        <string>RunItUp</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>armv7</string>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<true/>
-</dict>
-</plist>
-</file>
-
 <file path="ios/App/App.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist">
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1528,6 +1476,60 @@ export default defineConfig({
 })
 </file>
 
+<file path="ios/App/App/Info.plist">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+        <string>RunItUp</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIUserInterfaceStyle</key>
+<string>Dark</string>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+</dict>
+</plist>
+</file>
+
 <file path="ios/App/App.xcworkspace/contents.xcworkspacedata">
 <?xml version="1.0" encoding="UTF-8"?>
 <Workspace
@@ -1752,73 +1754,6 @@ end
 post_install do |installer|
   assertDeploymentTarget(installer)
 end
-</file>
-
-<file path="src/main.js">
-import { createApp } from "vue";
-import App from "./App.vue";
-
-import { IonicVue } from "@ionic/vue";
-
-/* Core CSS required for Ionic components to work properly */
-import "@ionic/vue/css/core.css";
-
-/* Basic CSS for apps built with Ionic */
-import "@ionic/vue/css/normalize.css";
-import "@ionic/vue/css/structure.css";
-import "@ionic/vue/css/typography.css";
-
-/* Optional CSS utils that can be commented out */
-import "@ionic/vue/css/padding.css";
-import "@ionic/vue/css/float-elements.css";
-import "@ionic/vue/css/text-alignment.css";
-import "@ionic/vue/css/text-transformation.css";
-import "@ionic/vue/css/flex-utils.css";
-import "@ionic/vue/css/display.css";
-
-/* Theme variables */
-import "./style.css";
-
-const app = createApp(App);
-
-app.use(IonicVue);
-
-// --- START: THEME DETECTION LOGIC ---
-
-// This function checks the system's preferred color scheme and toggles the 'dark' class on the body.
-const toggleDarkMode = (shouldAdd) => {
-  document.body.classList.toggle("dark", shouldAdd);
-};
-
-// Use matchMedia to check the user's preference
-const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-
-// Immediately set the theme when the app loads
-toggleDarkMode(prefersDark.matches);
-
-// Listen for changes in the system preference
-prefersDark.addEventListener("change", (mediaQuery) => {
-  toggleDarkMode(mediaQuery.matches);
-});
-
-// PWA Service Worker Registration
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((registration) => {
-        console.log(
-          "Service Worker registered with scope:",
-          registration.scope
-        );
-      })
-      .catch((error) => {
-        console.log("Service Worker registration failed:", error);
-      });
-  });
-}
-
-app.mount("#app");
 </file>
 
 <file path="package.json">
@@ -2262,6 +2197,57 @@ app.mount("#app");
 	};
 	rootObject = 504EC2FC1FED79650016851F /* Project object */;
 }
+</file>
+
+<file path="src/main.js">
+import { createApp } from "vue";
+import App from "./App.vue";
+
+import { IonicVue } from "@ionic/vue";
+
+/* Core CSS required for Ionic components to work properly */
+import "@ionic/vue/css/core.css";
+
+/* Basic CSS for apps built with Ionic */
+import "@ionic/vue/css/normalize.css";
+import "@ionic/vue/css/structure.css";
+import "@ionic/vue/css/typography.css";
+
+/* Optional CSS utils that can be commented out */
+import "@ionic/vue/css/padding.css";
+import "@ionic/vue/css/float-elements.css";
+import "@ionic/vue/css/text-alignment.css";
+import "@ionic/vue/css/text-transformation.css";
+import "@ionic/vue/css/flex-utils.css";
+import "@ionic/vue/css/display.css";
+
+/* Theme variables */
+import "./style.css"; // Assuming this is your main CSS file, similar to theme/variables.css
+
+const app = createApp(App);
+
+app.use(IonicVue);
+
+// PWA Service Worker Registration
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log(
+          "Service Worker registered with scope:",
+          registration.scope
+        );
+      })
+      .catch((error) => {
+        console.log("Service Worker registration failed:", error);
+      });
+  });
+}
+
+document.body.classList.add("dark");
+
+app.mount("#app");
 </file>
 
 <file path="src/style.css">

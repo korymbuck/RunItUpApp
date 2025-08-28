@@ -2,11 +2,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap");
 
 /*
- * YOUR APP'S DARK THEME (Scoped to body.dark for consistency)
+ * APP'S DEFAULT THEME (Permanently Dark)
+ * :root is a global selector for CSS variables.
 */
-body.dark {
-  font-family: "Orbitron", sans-serif;
-
+:root {
   --ion-background-color: #1e3a8a; /* The original deep blue */
   --ion-text-color: #ffffff;
   --ion-color-primary: #3b82f6;
@@ -15,7 +14,12 @@ body.dark {
   --ion-color-medium: #d1d5db;
 }
 
-/* Your existing component styles */
+/* Apply the default font to the entire app */
+body {
+  font-family: "Orbitron", sans-serif;
+}
+
+/* Your existing component styles (These remain unchanged) */
 ion-toolbar {
   --background: rgba(0, 0, 0, 0.2);
   --border-width: 0px;
@@ -82,4 +86,22 @@ ion-content {
   /* Style the cancel button specifically */
   --cancel-button-color: #ff8a80;
   --cancel-button-font-weight: bold;
+}
+
+/*
+ * ANDROID (MATERIAL DESIGN) SPECIFIC POP-UP STYLING
+ * Ensures text inside modals and action sheets is light and readable on Android.
+*/
+.md ion-modal ion-card-title,
+.md ion-modal ion-label,
+.md ion-modal ion-input,
+.md ion-modal p,
+.md ion-modal ion-note,
+.md ion-modal ion-select {
+  color: var(--ion-text-color, #ffffff);
+}
+
+.md .run-action-sheet .action-sheet-button,
+.md .run-action-sheet .action-sheet-button.action-sheet-cancel {
+  color: var(--ion-text-color, #ffffff);
 }
