@@ -1,36 +1,29 @@
 /* Import the Orbitron font */
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap");
 
-/* Define the original color palette */
-body {
+/*
+ * YOUR APP'S DARK THEME (Scoped to body.dark for consistency)
+*/
+body.dark {
   font-family: "Orbitron", sans-serif;
 
   --ion-background-color: #1e3a8a; /* The original deep blue */
   --ion-text-color: #ffffff;
   --ion-color-primary: #3b82f6;
   --ion-color-primary-contrast: #ffffff;
-
-  /* Make the dark theme toolbar match our background */
   --ion-toolbar-background: #1e3a8a;
-
-  /* Lighter grey for secondary text */
   --ion-color-medium: #d1d5db;
 }
 
+/* Your existing component styles */
 ion-toolbar {
-  --background: rgba(
-    0,
-    0,
-    0,
-    0.2
-  ); /* Semi-transparent background like the footer */
-  --border-width: 0px; /* Remove default border */
+  --background: rgba(0, 0, 0, 0.2);
+  --border-width: 0px;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Add our custom border */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Custom Card Styles */
 ion-card {
   --background: transparent;
 }
@@ -44,22 +37,49 @@ ion-content {
   --background: var(--ion-background-color);
 }
 
-/* Run Action Sheet Styles */
-
-.run-action-sheet {
-  --backdrop-opacity: 0.6;
+/*
+ * STYLES FOR ALERT POPUPS (Delete Run, etc.)
+*/
+.alert-wrapper {
+  background-color: #2b499b !important;
 }
 
-.run-action-sheet .action-sheet-title {
-  color: #e0e0e0;
+.alert-title {
+  color: #ffffff !important;
+}
+
+.alert-message {
+  color: #e0e0e0 !important;
+}
+
+.alert-button {
+  color: #fbbf24 !important;
   font-weight: 600;
 }
 
-.run-action-sheet .action-sheet-button {
-  color: #ffffff;
+.alert-button.alert-button-role-destructive {
+  color: #ff8a80 !important;
 }
 
-.run-action-sheet .action-sheet-button.action-sheet-cancel {
-  color: #ff8a80;
-  font-weight: bold;
+/*
+ * NEW: STYLES FOR ACTION SHEET POPUPS (New Run, Settings)
+ * This uses Ionic CSS variables to theme the component correctly.
+*/
+.run-action-sheet {
+  --backdrop-opacity: 0.6;
+
+  /* Set the background of the action sheet groups */
+  --background: #2b499b;
+
+  /* Style the text color of the title */
+  --color: #e0e0e0;
+
+  /* Style the individual buttons */
+  --button-background: #3b5998; /* A slightly different blue for buttons */
+  --button-color: #ffffff;
+  --button-background-activated: #4c6aa9; /* For the pressed state */
+
+  /* Style the cancel button specifically */
+  --cancel-button-color: #ff8a80;
+  --cancel-button-font-weight: bold;
 }

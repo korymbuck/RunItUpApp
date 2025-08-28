@@ -20,11 +20,29 @@ import "@ionic/vue/css/flex-utils.css";
 import "@ionic/vue/css/display.css";
 
 /* Theme variables */
-import "./style.css"; // Assuming this is your main CSS file, similar to theme/variables.css
+import "./style.css";
 
 const app = createApp(App);
 
 app.use(IonicVue);
+
+// --- START: THEME DETECTION LOGIC ---
+
+// This function checks the system's preferred color scheme and toggles the 'dark' class on the body.
+const toggleDarkMode = (shouldAdd) => {
+  document.body.classList.toggle("dark", shouldAdd);
+};
+
+// Use matchMedia to check the user's preference
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+// Immediately set the theme when the app loads
+toggleDarkMode(prefersDark.matches);
+
+// Listen for changes in the system preference
+prefersDark.addEventListener("change", (mediaQuery) => {
+  toggleDarkMode(mediaQuery.matches);
+});
 
 // PWA Service Worker Registration
 if ("serviceWorker" in navigator) {
