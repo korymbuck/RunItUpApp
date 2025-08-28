@@ -27,6 +27,9 @@ import {
   actionSheetController,
   IonActionSheet,
   IonButtons,
+  IonSelect,
+  IonSelectOption,
+  IonNote,
 } from "@ionic/vue";
 import {
   home,
@@ -47,6 +50,7 @@ import {
   chevronDown,
   walk,
   settingsOutline,
+  footsteps,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -68,6 +72,8 @@ import {
   getDoc,
   orderBy,
   limit,
+  updateDoc,
+  increment,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { gsap } from "gsap";
 import {
@@ -145,6 +151,15 @@ const isHoldingStop = ref(false);
 const holdProgress = ref(0);
 let holdTimer = null;
 let progressInterval = null;
+
+// --- NEW SHOE FEATURE STATE ---
+const userShoes = ref([]);
+const isAddShoeModalVisible = ref(false);
+const newShoeBrand = ref("");
+const newShoeModel = ref("");
+const isShoeDetailModalVisible = ref(false);
+const selectedShoeDetails = ref(null);
+const selectedShoeForRun = ref(null);
 
 /*Map State*/
 const mapContainer = ref(null); // To get a reference to the div
@@ -246,6 +261,20 @@ const weeklyChartData = computed(() => {
 const weeklyTotalDistance = computed(() =>
   runsForCurrentWeek.value.reduce((sum, run) => sum + run.distance, 0)
 );
+
+const averagePaceInSelectedShoe = computed(() => {
+  if (
+    !selectedShoeDetails.value ||
+    !selectedShoeDetails.value.totalDistance ||
+    selectedShoeDetails.value.totalDistance === 0
+  ) {
+    return 0;
+  }
+  return (
+    selectedShoeDetails.value.totalTime /
+    selectedShoeDetails.value.totalDistance
+  );
+});
 
 // --- METHODS ---
 function getLevelForXp(friendXp) {
@@ -509,7 +538,7 @@ async function initSummaryMap() {
     const routeLatLngs = lastRunSummary.value.route.map((p) => [p.lat, p.lng]);
     const polyline = L.polyline(routeLatLngs, {
       color: "#fbbf24",
-      weight: 8,
+      weight: 6.5,
     }).addTo(summaryMap);
 
     summaryMap.fitBounds(polyline.getBounds().pad(0.1));
@@ -528,6 +557,115 @@ function destroySummaryMap() {
     summaryMap.remove();
     summaryMap = null;
     summaryRoutePolyline = null;
+  }
+}
+
+// --- SHOE METHODS ---
+async function fetchUserShoes(userId) {
+  const q = query(
+    collection(db, "shoes"),
+    where("userId", "==", userId),
+    orderBy("brandName")
+  );
+  try {
+    const querySnapshot = await getDocs(q);
+    userShoes.value = querySnapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching user shoes:", error);
+  }
+}
+
+async function addShoe() {
+  if (!newShoeBrand.value.trim() || !newShoeModel.value.trim()) {
+    const toast = await toastController.create({
+      message: "Please enter both a brand and a model.",
+      duration: 2000,
+      color: "warning",
+    });
+    await toast.present();
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "shoes"), {
+      userId: user.value.uid,
+      brandName: newShoeBrand.value.trim(),
+      modelName: newShoeModel.value.trim(),
+      totalDistance: 0,
+      totalTime: 0,
+      runCount: 0,
+    });
+    await fetchUserShoes(user.value.uid);
+    isAddShoeModalVisible.value = false;
+    newShoeBrand.value = "";
+    newShoeModel.value = "";
+  } catch (error) {
+    console.error("Error adding shoe:", error);
+    const toast = await toastController.create({
+      message: "Could not add shoe. Please try again.",
+      duration: 3000,
+      color: "danger",
+    });
+    await toast.present();
+  }
+}
+
+function openShoeDetailModal(shoe) {
+  selectedShoeDetails.value = shoe;
+  isShoeDetailModalVisible.value = true;
+}
+
+async function updateRunAndShoeStats(runId, runData, shoeId) {
+  if (!runId || !runData || !shoeId) return;
+
+  const runDocRef = doc(db, "runs", runId);
+  const shoeDocRef = doc(db, "shoes", shoeId);
+
+  try {
+    const shoeInfo = userShoes.value.find((s) => s.id === shoeId);
+    if (!shoeInfo) {
+      console.error("Selected shoe not found in local state.");
+      return;
+    }
+
+    // 1. Update the run document with shoe information
+    await updateDoc(runDocRef, {
+      shoeId: shoeId,
+      shoeName: `${shoeInfo.brandName} ${shoeInfo.modelName}`,
+    });
+
+    // 2. Update the shoe's aggregated stats
+    const shoeDoc = await getDoc(shoeDocRef);
+    if (shoeDoc.exists()) {
+      const currentStats = shoeDoc.data();
+      const newStats = {
+        totalDistance: (currentStats.totalDistance || 0) + runData.distance,
+        totalTime: (currentStats.totalTime || 0) + runData.time,
+        runCount: (currentStats.runCount || 0) + 1,
+      };
+      await updateDoc(shoeDocRef, newStats);
+    }
+
+    // 3. Refresh local shoe data to reflect changes immediately on the profile page
+    await fetchUserShoes(user.value.uid);
+
+    const toast = await toastController.create({
+      message: "Run logged to your shoe!",
+      duration: 2000,
+      color: "success",
+    });
+    await toast.present();
+  } catch (error) {
+    console.error("Error updating run and shoe stats:", error);
+    const toast = await toastController.create({
+      message: "Failed to log run to shoe.",
+      duration: 3000,
+      color: "danger",
+    });
+    await toast.present();
   }
 }
 
@@ -576,7 +714,7 @@ function startWorkout() {
             userMarker = L.marker(latlng).addTo(map);
             routePolyline = L.polyline([latlng], {
               color: "#fbbf24",
-              weight: 8,
+              weight: 6.5,
             }).addTo(map);
             map.setView(latlng, 16); // Zoom in on the user
           } else {
@@ -625,9 +763,9 @@ async function stopWorkout() {
       route: routeCoordinates.value,
     };
     try {
-      await addDoc(collection(db, "runs"), newRunData);
+      const docRef = await addDoc(collection(db, "runs"), newRunData);
       await fetchUserRuns(user.value.uid);
-      lastRunSummary.value = newRunData;
+      lastRunSummary.value = { id: docRef.id, ...newRunData };
       isSummaryModalVisible.value = true;
     } catch (error) {
       console.error("Error saving run:", error);
@@ -669,13 +807,28 @@ async function logRun() {
       pace: timeInSeconds / dist,
       timestamp: new Date(),
     };
-    await addDoc(collection(db, "runs"), newRunData);
-    await fetchUserRuns(user.value.uid); // This also triggers recalculateStats and updateUserStats
-    distanceInput.value = null;
-    hoursInput.value = null;
-    minutesInput.value = null;
-    secondsInput.value = null;
-    isLogRunModalVisible.value = false;
+    try {
+      const docRef = await addDoc(collection(db, "runs"), newRunData);
+
+      if (selectedShoeForRun.value) {
+        await updateRunAndShoeStats(
+          docRef.id,
+          newRunData,
+          selectedShoeForRun.value
+        );
+      }
+      await fetchUserRuns(user.value.uid); // This also triggers recalculateStats and updateUserStats
+
+      distanceInput.value = null;
+      hoursInput.value = null;
+      minutesInput.value = null;
+      secondsInput.value = null;
+      isLogRunModalVisible.value = false;
+      selectedShoeForRun.value = null; // Reset shoe selection
+    } catch (error) {
+      console.error("Error logging run:", error);
+      alert("There was an error logging your run.");
+    }
   } else {
     alert("Please enter a valid distance and time.");
   }
@@ -685,7 +838,6 @@ async function deleteRun(index) {
   if (navigator.vibrate) navigator.vibrate(50);
   if (!user.value) return;
 
-  // Create the alert using the controller
   const alert = await alertController.create({
     header: "Confirm Deletion",
     cssClass: "custom-alert",
@@ -700,10 +852,24 @@ async function deleteRun(index) {
           const runToDelete = runHistory.value[index];
           if (runToDelete.id) {
             try {
-              await deleteDoc(doc(db, "runs", runToDelete.id));
-              await fetchUserRuns(user.value.uid);
+              // STEP 1: If a shoe is linked, update its stats by subtracting the run's data.
+              if (runToDelete.shoeId) {
+                const shoeDocRef = doc(db, "shoes", runToDelete.shoeId);
+                // Use Firebase's `increment` with negative values to atomically subtract.
+                await updateDoc(shoeDocRef, {
+                  totalDistance: increment(-runToDelete.distance),
+                  totalTime: increment(-runToDelete.time),
+                  runCount: increment(-1),
+                });
+              }
 
-              // Create and present a success toast
+              // STEP 2: Delete the actual run document.
+              await deleteDoc(doc(db, "runs", runToDelete.id));
+
+              // STEP 3: Refresh local data to reflect changes in the UI.
+              await fetchUserRuns(user.value.uid); // Recalculates user's total stats.
+              await fetchUserShoes(user.value.uid); // Refreshes shoe list with updated mileage.
+
               const toast = await toastController.create({
                 message: "Run deleted successfully.",
                 duration: 2000,
@@ -712,9 +878,10 @@ async function deleteRun(index) {
               });
               await toast.present();
             } catch (error) {
-              console.error("Error deleting run:", error);
-
-              // Create and present an error toast
+              console.error(
+                "Error deleting run and updating shoe stats:",
+                error
+              );
               const toast = await toastController.create({
                 message: "Failed to delete run. Please try again.",
                 duration: 3000,
@@ -729,7 +896,6 @@ async function deleteRun(index) {
     ],
   });
 
-  // Present the alert
   await alert.present();
 }
 
@@ -1092,6 +1258,7 @@ onMounted(() => {
       }
       closeAuthModal();
       await fetchUserRuns(authUser.uid);
+      await fetchUserShoes(authUser.uid);
       await setupSocialListeners();
     } else {
       user.value = null;
@@ -1099,6 +1266,7 @@ onMounted(() => {
       photoURL.value = null;
       runHistory.value = [];
       friends.value = [];
+      userShoes.value = [];
       recalculateStatsFromHistory();
       openAuthModal();
       if (friendsListenerUnsubscribe) {
@@ -1430,6 +1598,42 @@ onMounted(() => {
               </ion-card-content>
             </ion-card>
 
+            <!-- Shoes Card -->
+            <ion-card class="styled-card">
+              <ion-card-header>
+                <ion-card-title>My Shoes</ion-card-title>
+              </ion-card-header>
+              <ion-card-content>
+                <ion-list lines="none" v-if="userShoes.length > 0">
+                  <ion-item
+                    v-for="shoe in userShoes"
+                    :key="shoe.id"
+                    button
+                    @click="openShoeDetailModal(shoe)"
+                    class="run-history-item"
+                  >
+                    <ion-label>
+                      <h2>{{ shoe.brandName }}</h2>
+                      <p>{{ shoe.modelName }}</p>
+                    </ion-label>
+                    <ion-note slot="end" color="primary"
+                      >{{ shoe.totalDistance.toFixed(2) }} mi</ion-note
+                    >
+                  </ion-item>
+                </ion-list>
+                <p v-else class="ion-text-center no-data-text">
+                  You haven't added any shoes yet.
+                </p>
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  @click="isAddShoeModalVisible = true"
+                  class="ion-margin-top"
+                  >Add New Shoe</ion-button
+                >
+              </ion-card-content>
+            </ion-card>
+
             <!-- Run History Card -->
             <ion-card class="styled-card" v-if="runHistory.length > 0">
               <ion-card-header>
@@ -1473,6 +1677,10 @@ onMounted(() => {
                           {{ formatTime(run.pace) }}
                         </p>
                       </div>
+                    </div>
+                    <div v-if="run.shoeName" class="run-shoe-tag">
+                      <ion-icon :icon="footsteps"></ion-icon>
+                      <span>{{ run.shoeName }}</span>
                     </div>
                   </div>
                 </ion-list>
@@ -1763,8 +1971,20 @@ onMounted(() => {
       <!-- Run Summary Modal -->
       <ion-modal
         :is-open="isSummaryModalVisible"
-        @didDismiss="isSummaryModalVisible = false"
-        @ionModalDidDismiss="destroySummaryMap"
+        @didDismiss="
+          () => {
+            if (selectedShoeForRun && lastRunSummary?.id) {
+              updateRunAndShoeStats(
+                lastRunSummary.id,
+                lastRunSummary,
+                selectedShoeForRun
+              );
+            }
+            isSummaryModalVisible = false;
+            selectedShoeForRun = null; // Reset for next run
+            destroySummaryMap(); // Manually call destroy
+          }
+        "
         class="summary-modal"
       >
         <ion-header>
@@ -1832,6 +2052,26 @@ onMounted(() => {
                   </ion-col>
                 </ion-row>
               </ion-grid>
+              <!-- Shoe Selector Dropdown -->
+              <ion-item
+                lines="none"
+                class="input-with-icon ion-margin-top"
+                v-if="userShoes.length > 0"
+              >
+                <ion-label>Shoe Worn</ion-label>
+                <ion-select
+                  placeholder="Select Shoe"
+                  v-model="selectedShoeForRun"
+                >
+                  <ion-select-option
+                    v-for="shoe in userShoes"
+                    :key="shoe.id"
+                    :value="shoe.id"
+                  >
+                    {{ shoe.brandName }} {{ shoe.modelName }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
             </ion-card-content>
           </ion-card>
         </ion-content>
@@ -1958,6 +2198,26 @@ onMounted(() => {
                   ></ion-input>
                 </div>
               </div>
+              <!-- NEW: Shoe Selector Dropdown -->
+              <ion-item
+                lines="none"
+                class="input-with-icon ion-margin-top"
+                v-if="userShoes.length > 0"
+              >
+                <ion-label>Shoe Worn (Optional)</ion-label>
+                <ion-select
+                  placeholder="Select Shoe"
+                  v-model="selectedShoeForRun"
+                >
+                  <ion-select-option
+                    v-for="shoe in userShoes"
+                    :key="shoe.id"
+                    :value="shoe.id"
+                  >
+                    {{ shoe.brandName }} {{ shoe.modelName }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
               <ion-button
                 expand="block"
                 @click="logRun"
@@ -2023,6 +2283,114 @@ onMounted(() => {
           </ion-card>
         </ion-content>
       </ion-modal>
+
+      <!-- Add Shoe Modal -->
+      <ion-modal :is-open="isAddShoeModalVisible">
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Add a New Shoe</ion-title>
+            <ion-buttons slot="end">
+              <ion-button @click="isAddShoeModalVisible = false">
+                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-card class="styled-card">
+            <ion-card-content>
+              <ion-item lines="none" class="input-with-icon">
+                <ion-input
+                  label="Brand Name"
+                  label-placement="floating"
+                  placeholder="e.g., Hoka"
+                  v-model="newShoeBrand"
+                ></ion-input>
+              </ion-item>
+              <ion-item lines="none" class="input-with-icon">
+                <ion-input
+                  label="Model Name"
+                  label-placement="floating"
+                  placeholder="e.g., Clifton 9"
+                  v-model="newShoeModel"
+                ></ion-input>
+              </ion-item>
+              <ion-button
+                expand="block"
+                @click="addShoe"
+                class="ion-margin-top yellow-button"
+                >Save Shoe</ion-button
+              >
+            </ion-card-content>
+          </ion-card>
+        </ion-content>
+      </ion-modal>
+
+      <!-- Shoe Detail Modal -->
+      <ion-modal
+        :is-open="isShoeDetailModalVisible"
+        @didDismiss="isShoeDetailModalVisible = false"
+        class="summary-modal"
+      >
+        <ion-header>
+          <ion-toolbar color="#1e3a8a">
+            <ion-title>Shoe Details</ion-title>
+            <ion-button
+              slot="end"
+              fill="clear"
+              @click="isShoeDetailModalVisible = false"
+            >
+              <ion-icon :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          <ion-card class="styled-card" v-if="selectedShoeDetails">
+            <ion-card-header>
+              <ion-card-title class="summary-title">
+                {{ selectedShoeDetails.brandName }}
+              </ion-card-title>
+              <p class="ion-text-center">{{ selectedShoeDetails.modelName }}</p>
+            </ion-card-header>
+            <ion-card-content>
+              <ion-grid class="summary-stats-grid">
+                <ion-row>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="rocket" color="primary"></ion-icon>
+                    <p class="stat-label">Total Distance</p>
+                    <p class="stat-value">
+                      {{ selectedShoeDetails.totalDistance.toFixed(2) }}
+                      <span class="stat-unit">mi</span>
+                    </p>
+                  </ion-col>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                    <p class="stat-label">Total Time</p>
+                    <p class="stat-value">
+                      {{ formatTime(selectedShoeDetails.totalTime, true) }}
+                    </p>
+                  </ion-col>
+                </ion-row>
+                <ion-row>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="speedometer" color="primary"></ion-icon>
+                    <p class="stat-label">Avg. Pace</p>
+                    <p class="stat-value">
+                      {{ formatTime(averagePaceInSelectedShoe) }}
+                      <span class="stat-unit">/mi</span>
+                    </p>
+                  </ion-col>
+                  <ion-col size="6" class="summary-stat-item">
+                    <ion-icon :icon="walk" color="primary"></ion-icon>
+                    <p class="stat-label">Total Runs</p>
+                    <p class="stat-value">{{ selectedShoeDetails.runCount }}</p>
+                  </ion-col>
+                </ion-row>
+              </ion-grid>
+            </ion-card-content>
+          </ion-card>
+        </ion-content>
+      </ion-modal>
     </template>
   </ion-app>
 </template>
@@ -2050,6 +2418,21 @@ onMounted(() => {
   color: #d1d5db;
   text-align: right;
   margin-top: 0.5rem;
+}
+.run-shoe-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #d1d5db;
+  margin-top: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 12px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Weekly Chart Styles */
@@ -2694,6 +3077,10 @@ ion-progress-bar {
 
 .input-with-icon ion-input {
   color: #fff;
+}
+.input-with-icon ion-select {
+  color: #fff;
+  width: 100%;
 }
 
 .auth-toggle {
