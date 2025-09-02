@@ -161,6 +161,10 @@ const isShoeDetailModalVisible = ref(false);
 const selectedShoeDetails = ref(null);
 const selectedShoeForRun = ref(null);
 
+// -- DESCRIPTIONS STATE --
+const runSummaryDescription = ref("");
+const logRunDescription = ref("");
+
 /*Map State*/
 const mapContainer = ref(null); // To get a reference to the div
 let map = null; // We use 'let' because the map instance itself isn't reactive
@@ -722,6 +726,56 @@ async function updateRunAndShoeStats(runId, runData, shoeId) {
   }
 }
 
+// --- SUMMARY MODAL UPDATE METHODS ---
+async function handleSummaryModalDismiss() {
+  const runId = lastRunSummary.value?.id;
+  const shoeId = selectedShoeForRun.value;
+  const description = runSummaryDescription.value.trim();
+
+  // Save shoe info if selected
+  if (shoeId && runId) {
+    await updateRunAndShoeStats(runId, lastRunSummary.value, shoeId);
+  }
+
+  // Save description if entered
+  if (description && runId) {
+    try {
+      const runDocRef = doc(db, "runs", runId);
+      await updateDoc(runDocRef, { description });
+
+      // Update local state for immediate UI feedback
+      const runIndex = runHistory.value.findIndex((r) => r.id === runId);
+      if (runIndex > -1) {
+        runHistory.value[runIndex].description = description;
+        // If it's the latest run, update stats which includes the description
+        if (runIndex === 0) {
+          await updateUserStatsInFirestore();
+        }
+      }
+      const toast = await toastController.create({
+        message: "Description saved!",
+        duration: 2000,
+        color: "success",
+      });
+      await toast.present();
+    } catch (error) {
+      console.error("Error saving run description:", error);
+      const toast = await toastController.create({
+        message: "Could not save description.",
+        duration: 3000,
+        color: "danger",
+      });
+      await toast.present();
+    }
+  }
+
+  // Reset state
+  isSummaryModalVisible.value = false;
+  selectedShoeForRun.value = null;
+  runSummaryDescription.value = "";
+  destroySummaryMap();
+}
+
 // --- WORKOUT METHODS ---
 function startWorkout() {
   if (navigator.vibrate) {
@@ -859,6 +913,7 @@ async function logRun() {
       time: timeInSeconds,
       pace: timeInSeconds / dist,
       timestamp: new Date(),
+      description: logRunDescription.value.trim() || "",
     };
     try {
       const docRef = await addDoc(collection(db, "runs"), newRunData);
@@ -876,8 +931,7 @@ async function logRun() {
       hoursInput.value = null;
       minutesInput.value = null;
       secondsInput.value = null;
-      isLogRunModalVisible.value = false;
-      selectedShoeForRun.value = null; // Reset shoe selection
+      logRunDescription.value = "";
     } catch (error) {
       console.error("Error logging run:", error);
       alert("There was an error logging your run.");
@@ -1140,6 +1194,7 @@ async function updateUserStatsInFirestore() {
               time: lastRun.time,
               pace: lastRun.pace,
               date: lastRun.date,
+              description: lastRun.description || "",
             }
           : null,
       },
@@ -1553,6 +1608,16 @@ onMounted(() => {
                 <!-- Latest Run -->
                 <div class="friend-latest-run">
                   <h3 class="section-title">Latest Run</h3>
+                  <p
+                    v-if="
+                      friend.stats &&
+                      friend.stats.lastRun &&
+                      friend.stats.lastRun.description
+                    "
+                    class="run-description"
+                  >
+                    "{{ friend.stats.lastRun.description }}"
+                  </p>
                   <div
                     v-if="friend.stats && friend.stats.lastRun"
                     class="run-history-stats"
@@ -1577,6 +1642,7 @@ onMounted(() => {
                       </p>
                     </div>
                   </div>
+
                   <div v-else class="ion-text-center">
                     <p class="no-data-text">No recent runs</p>
                   </div>
@@ -1710,6 +1776,9 @@ onMounted(() => {
                         <ion-icon slot="icon-only" :icon="trash"></ion-icon>
                       </ion-button>
                     </div>
+                    <p v-if="run.description" class="run-description">
+                      "{{ run.description }}"
+                    </p>
                     <div class="run-history-stats">
                       <div>
                         <p class="stat-label">Distance</p>
@@ -1731,6 +1800,7 @@ onMounted(() => {
                         </p>
                       </div>
                     </div>
+
                     <div v-if="run.shoeName" class="run-shoe-tag">
                       <ion-icon :icon="footsteps"></ion-icon>
                       <span>{{ run.shoeName }}</span>
@@ -2015,6 +2085,9 @@ onMounted(() => {
                   <div class="run-history-header">
                     <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
                   </div>
+                  <p v-if="run.description" class="run-description">
+                    "{{ run.description }}"
+                  </p>
                   <div class="run-history-stats">
                     <div>
                       <p class="stat-label">Distance</p>
@@ -2047,20 +2120,7 @@ onMounted(() => {
       <!-- Run Summary Modal -->
       <ion-modal
         :is-open="isSummaryModalVisible"
-        @didDismiss="
-          () => {
-            if (selectedShoeForRun && lastRunSummary?.id) {
-              updateRunAndShoeStats(
-                lastRunSummary.id,
-                lastRunSummary,
-                selectedShoeForRun
-              );
-            }
-            isSummaryModalVisible = false;
-            selectedShoeForRun = null; // Reset for next run
-            destroySummaryMap(); // Manually call destroy
-          }
-        "
+        @didDismiss="handleSummaryModalDismiss"
         class="summary-modal"
       >
         <ion-header>
@@ -2128,6 +2188,15 @@ onMounted(() => {
                   </ion-col>
                 </ion-row>
               </ion-grid>
+              <!-- Run Description Input -->
+              <ion-item lines="none" class="input-with-icon ion-margin-top">
+                <ion-input
+                  label="Description"
+                  label-placement="floating"
+                  placeholder="(Optional)"
+                  v-model="runSummaryDescription"
+                ></ion-input>
+              </ion-item>
               <!-- Shoe Selector Dropdown -->
               <ion-item
                 lines="none"
@@ -2274,6 +2343,15 @@ onMounted(() => {
                   ></ion-input>
                 </div>
               </div>
+              <!-- Run Description Input -->
+              <ion-item lines="none" class="input-with-icon ion-margin-top">
+                <ion-input
+                  label="Description"
+                  label-placement="floating"
+                  placeholder="(Optional)"
+                  v-model="logRunDescription"
+                ></ion-input>
+              </ion-item>
               <!-- Shoe Selector Dropdown -->
               <ion-item
                 lines="none"
@@ -3354,5 +3432,21 @@ ion-progress-bar {
   --padding-top: 4px; /* Match vertical padding of the pill */
   --padding-bottom: 4px; /* Match vertical padding of the pill */
   color: #d1d5db;
+}
+
+/* Run Description Styles */
+.run-description {
+  font-style: italic;
+  color: #f0f0f0;
+  padding: 10px 14px;
+  margin: 10px 0 4px 0;
+
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
+  border-radius: 8px;
+
+  border-left: 3px solid #fbbf24;
 }
 </style>
