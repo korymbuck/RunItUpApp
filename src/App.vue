@@ -613,6 +613,59 @@ async function addShoe() {
   }
 }
 
+async function addShoeToPastRun(run, shoeId) {
+  if (!run || !shoeId || !user.value) return;
+
+  const runDocRef = doc(db, "runs", run.id);
+  const shoeDocRef = doc(db, "shoes", shoeId);
+
+  try {
+    const shoeInfo = userShoes.value.find((s) => s.id === shoeId);
+    if (!shoeInfo) {
+      console.error("Selected shoe not found in local state.");
+      const toast = await toastController.create({
+        message: "Error: Selected shoe could not be found.",
+        duration: 3000,
+        color: "danger",
+      });
+      await toast.present();
+      return;
+    }
+
+    // 1. Update the run document to link the shoe
+    await updateDoc(runDocRef, {
+      shoeId: shoeId,
+      shoeName: `${shoeInfo.brandName} ${shoeInfo.modelName}`,
+    });
+
+    // 2. Atomically update the shoe's total stats
+    await updateDoc(shoeDocRef, {
+      totalDistance: increment(run.distance),
+      totalTime: increment(run.time),
+      runCount: increment(1),
+    });
+
+    // 3. Refresh local data to instantly update the UI
+    await fetchUserRuns(user.value.uid);
+    await fetchUserShoes(user.value.uid);
+
+    const toast = await toastController.create({
+      message: "Shoe added to your run!",
+      duration: 2000,
+      color: "success",
+    });
+    await toast.present();
+  } catch (error) {
+    console.error("Error adding shoe to past run:", error);
+    const toast = await toastController.create({
+      message: "Failed to add shoe to the run. Please try again.",
+      duration: 3000,
+      color: "danger",
+    });
+    await toast.present();
+  }
+}
+
 function openShoeDetailModal(shoe) {
   selectedShoeDetails.value = shoe;
   isShoeDetailModalVisible.value = true;
@@ -1682,6 +1735,29 @@ onMounted(() => {
                       <ion-icon :icon="footsteps"></ion-icon>
                       <span>{{ run.shoeName }}</span>
                     </div>
+                    <!-- Run History Shoe Dropdown -->
+                    <div
+                      v-else-if="userShoes.length > 0"
+                      class="add-shoe-to-run-container"
+                    >
+                      <ion-item lines="none" class="add-shoe-select-item">
+                        <ion-select
+                          interface="popover"
+                          placeholder="Add a shoe"
+                          @ionChange="
+                            (event) => addShoeToPastRun(run, event.detail.value)
+                          "
+                        >
+                          <ion-select-option
+                            v-for="shoe in userShoes"
+                            :key="shoe.id"
+                            :value="shoe.id"
+                          >
+                            {{ shoe.brandName }} {{ shoe.modelName }}
+                          </ion-select-option>
+                        </ion-select>
+                      </ion-item>
+                    </div>
                   </div>
                 </ion-list>
                 <ion-button
@@ -2198,7 +2274,7 @@ onMounted(() => {
                   ></ion-input>
                 </div>
               </div>
-              <!-- NEW: Shoe Selector Dropdown -->
+              <!-- Shoe Selector Dropdown -->
               <ion-item
                 lines="none"
                 class="input-with-icon ion-margin-top"
@@ -2411,7 +2487,7 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 .summary-stat-item .stat-value.small {
-  font-size: 1.5rem; /* Override for stats grid */
+  font-size: 1.5rem;
 }
 .xp-text {
   font-size: 0.8rem;
@@ -2569,14 +2645,12 @@ ion-content {
   line-height: 1.1;
 }
 .stat-value.small {
-  /* Replaced fixed font-size with a responsive one */
   font-size: clamp(1.1rem, 4.2vw, 1.5rem);
 
-  /* Added overflow protection as a safeguard */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: block; /* Ensures overflow rules apply correctly */
+  display: block;
   max-width: 100%;
 }
 .stat-unit {
@@ -2606,7 +2680,7 @@ ion-content {
   left: 0;
   right: 0;
   width: 100%;
-  height: 75px; /* Increased from 65px */
+  height: 75px;
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -2623,14 +2697,14 @@ ion-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 12px; /* Increased from 10px */
+  font-size: 12px;
   transition: color 0.2s;
 }
 .footer-tabs button.active {
   color: #fbbf24;
 }
 .footer-tabs ion-icon {
-  font-size: 26px; /* Increased from 24px */
+  font-size: 26px;
   margin-bottom: 2px;
 }
 ion-content {
@@ -2665,6 +2739,8 @@ ion-content {
   font-weight: 700;
   color: #fff;
 }
+
+/* Run History Styles */
 .run-history-item {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
@@ -2684,6 +2760,8 @@ ion-content {
   grid-template-columns: repeat(3, 1fr);
   text-align: center;
 }
+
+/* Friend Card Styles */
 .friend-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
@@ -2722,7 +2800,7 @@ ion-content {
 .run-history-item.mini .stat-value.small {
   font-size: 1.2rem;
 }
-/* This controls the animation timing */
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.25s ease-out;
@@ -2770,35 +2848,32 @@ ion-content {
   border-radius: 50%;
   object-fit: cover;
 }
-/* Custom Alert Styles for Dark Theme */
+
+/* Alert Styles */
 .custom-alert {
-  /* Set the main background of the alert box */
-  --background: #2b499b; /* A slightly lighter shade of your app's blue for contrast */
+  --background: #2b499b;
   --backdrop-opacity: 0.6;
 }
 
-/* Style the header/title text */
 .custom-alert .alert-title {
   color: #ffffff !important;
 }
 
-/* Style the message text */
 .custom-alert .alert-message {
-  color: #e0e0e0 !important; /* A slightly off-white for the body text */
+  color: #e0e0e0 !important;
 }
 
-/* Style the buttons */
 .custom-alert .alert-button {
-  color: #fbbf24 !important; /* Your yellow accent color for buttons */
+  color: #fbbf24 !important;
   font-weight: 600;
   text-transform: uppercase;
 }
 
-/* Specifically color the "Delete" button to be more dangerous */
 .custom-alert .alert-button-role-destructive {
-  color: #ff4961 !important; /* A typical red for destructive actions */
+  color: #ff4961 !important;
 }
 
+/* Loading Overlay Styles */
 .loading-content {
   display: flex;
   flex-direction: column;
@@ -2855,6 +2930,8 @@ ion-spinner {
     opacity: 1;
   }
 }
+
+/* Friend List Styles */
 .friend-list {
   display: flex;
   flex-direction: column;
@@ -2968,8 +3045,7 @@ ion-progress-bar {
   font-size: 1.2rem;
 }
 
-/* Styles for Run Summary Modal */
-
+/* Run Summary Modal Style */
 .summary-modal ion-card-header {
   display: flex;
   flex-direction: column;
@@ -3026,6 +3102,7 @@ ion-progress-bar {
   font-size: 1rem;
 }
 
+/* Authentication Modal Styles */
 .auth-modal {
   --background: transparent;
 }
@@ -3202,6 +3279,7 @@ ion-progress-bar {
   margin: 1rem;
 }
 
+/* Hold to Stop Button Styles */
 .hold-to-stop-button {
   position: relative;
   width: 100%;
@@ -3249,5 +3327,32 @@ ion-progress-bar {
 
 .hold-to-stop-button.is-holding .hold-text {
   letter-spacing: 1.5px;
+}
+
+/* Shoe History Styles */
+.add-shoe-to-run-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.add-shoe-select-item {
+  --background: rgba(255, 255, 255, 0.1);
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --inner-padding-top: 0; /* Remove extra vertical space from the item wrapper */
+  --inner-padding-bottom: 0; /* Remove extra vertical space from the item wrapper */
+  --min-height: unset; /* Allow the item to shrink vertically */
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.add-shoe-select-item ion-select {
+  font-size: 0.8rem;
+  --padding-start: 8px; /* Match horizontal padding of the pill */
+  --padding-end: 8px; /* Match horizontal padding of the pill */
+  --padding-top: 4px; /* Match vertical padding of the pill */
+  --padding-bottom: 4px; /* Match vertical padding of the pill */
+  color: #d1d5db;
 }
 </style>
