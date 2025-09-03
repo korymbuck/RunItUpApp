@@ -286,6 +286,22 @@ const averagePaceInSelectedShoe = computed(() => {
   );
 });
 
+const sortedFriends = computed(() => {
+  // Create a shallow copy to avoid mutating the original array
+  return [...friends.value].sort((a, b) => {
+    const aLastRun = a.stats?.lastRun?.date;
+    const bLastRun = b.stats?.lastRun?.date;
+
+    // If 'b' has no last run, it should come after 'a'
+    if (!bLastRun) return -1;
+    // If 'a' has no last run, it should come after 'b'
+    if (!aLastRun) return 1;
+
+    // Sort by the most recent date first (descending order)
+    return new Date(bLastRun) - new Date(aLastRun);
+  });
+});
+
 // --- METHODS ---
 function getLevelForXp(friendXp) {
   if (typeof friendXp !== "number") friendXp = 0;
@@ -1612,7 +1628,7 @@ onMounted(() => {
 
             <div v-if="friends.length > 0" class="friend-list">
               <div
-                v-for="friend in friends"
+                v-for="friend in sortedFriends"
                 :key="friend.uid"
                 class="friend-card-refined"
               >
@@ -1657,6 +1673,17 @@ onMounted(() => {
                 <!-- Latest Run -->
                 <div class="friend-latest-run">
                   <h3 class="section-title">Latest Run</h3>
+                  <p
+                    v-if="friend.stats?.lastRun?.date"
+                    class="latest-run-date-subtitle"
+                  >
+                    {{
+                      new Date(friend.stats.lastRun.date).toLocaleDateString(
+                        "en-US",
+                        { year: "numeric", month: "2-digit", day: "2-digit" }
+                      )
+                    }}
+                  </p>
                   <p
                     v-if="
                       friend.stats &&
@@ -3537,5 +3564,25 @@ ion-progress-bar {
   font-size: 1.1rem;
   font-weight: 600;
   color: #ffffff;
+}
+
+/* Section Title Styles */
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d1d5db;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 0.25rem; /* Change this line */
+  text-align: center;
+}
+
+.latest-run-date-subtitle {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fbbf24; /* The requested yellow color */
+  margin-top: 0; /* Remove default paragraph margin */
+  margin-bottom: 0.75rem; /* Add space below the date */
 }
 </style>

@@ -152,7 +152,7 @@ This section contains the contents of the repository's files.
 		<key>App.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
-			<integer>29</integer>
+			<integer>4</integer>
 		</dict>
 	</dict>
 </dict>
@@ -2841,15 +2841,9 @@ async function openUserProfileModal(friend) {
 }
 
 /* Weather Methods */
-const openWeatherApiKey = ref("0eba5f215da947c9f966707b84cea466"); // <-- REPLACE THIS
+const openWeatherApiKey = ref("0eba5f215da947c9f966707b84cea466");
 
 async function fetchWeatherForRun(latitude, longitude) {
-  if (openWeatherApiKey.value === "0eba5f215da947c9f966707b84cea466") {
-    console.warn(
-      "OpenWeatherMap API key is not set. Weather feature will be disabled."
-    );
-    return null;
-  }
   try {
     const response = await fetch(
       `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${openWeatherApiKey.value}&units=imperial`
@@ -2876,7 +2870,7 @@ function getWeatherIcon(description) {
     Rain: rainyOutline,
     Snow: snowOutline,
     Clear: sunnyOutline,
-    Clouds: cloudOutline,
+    Cloudy: cloudOutline,
   };
   return iconMap[description] || partlySunnyOutline; // Default icon for mist, fog, etc.
 }
@@ -3264,7 +3258,7 @@ async function stopWorkout() {
   isTracking.value = false;
   isLiveTrackingModalVisible.value = false;
 
-  if (currentDistance.value > 0.01) {
+  if (currentDistance.value > 0.0) {
     if (!user.value) {
       alert("Please log in to save your workout data.");
       return;
@@ -4577,9 +4571,7 @@ onMounted(() => {
                   :icon="getWeatherIcon(lastRunSummary.weather.description)"
                   class="weather-icon"
                 ></ion-icon>
-                <span class="weather-description">{{
-                  lastRunSummary.weather.description
-                }}</span>
+
                 <span class="weather-temp"
                   >{{ Math.round(lastRunSummary.weather.temp) }}&deg;F</span
                 >
