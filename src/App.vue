@@ -51,6 +51,12 @@ import {
   walk,
   settingsOutline,
   footsteps,
+  sunnyOutline,
+  cloudOutline,
+  rainyOutline,
+  snowOutline,
+  thunderstormOutline,
+  partlySunnyOutline,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -471,6 +477,41 @@ async function openUserProfileModal(friend) {
   }
 }
 
+/* Weather Methods */
+const openWeatherApiKey = ref("0eba5f215da947c9f966707b84cea466");
+
+async function fetchWeatherForRun(latitude, longitude) {
+  try {
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${openWeatherApiKey.value}&units=imperial`
+    );
+    if (!response.ok) {
+      throw new Error("Weather data not available");
+    }
+    const data = await response.json();
+    return {
+      temp: data.main.temp,
+      description: data.weather[0].main, // e.g., "Clouds", "Clear"
+    };
+  } catch (error) {
+    console.error("Error fetching weather:", error);
+    return null;
+  }
+}
+
+// Maps weather descriptions to Ionicons
+function getWeatherIcon(description) {
+  const iconMap = {
+    Thunderstorm: thunderstormOutline,
+    Drizzle: rainyOutline,
+    Rain: rainyOutline,
+    Snow: snowOutline,
+    Clear: sunnyOutline,
+    Cloudy: cloudOutline,
+  };
+  return iconMap[description] || partlySunnyOutline; // Default icon for mist, fog, etc.
+}
+
 /* Map Methods */
 
 async function initMap() {
@@ -854,10 +895,17 @@ async function stopWorkout() {
   isTracking.value = false;
   isLiveTrackingModalVisible.value = false;
 
-  if (currentDistance.value > 0.01) {
+  if (currentDistance.value > 0.0) {
     if (!user.value) {
       alert("Please log in to save your workout data.");
       return;
+    }
+    let weatherData = null;
+    if (lastPosition) {
+      weatherData = await fetchWeatherForRun(
+        lastPosition.latitude,
+        lastPosition.longitude
+      );
     }
     const workoutTime = elapsedTime.value;
     const newRunData = {
@@ -868,6 +916,7 @@ async function stopWorkout() {
       pace: currentDistance.value > 0 ? workoutTime / currentDistance.value : 0,
       timestamp: new Date(),
       route: routeCoordinates.value,
+      weather: weatherData,
     };
     try {
       const docRef = await addDoc(collection(db, "runs"), newRunData);
@@ -2154,6 +2203,16 @@ onMounted(() => {
               >
             </ion-card-header>
             <ion-card-content>
+              <div v-if="lastRunSummary.weather" class="weather-summary">
+                <ion-icon
+                  :icon="getWeatherIcon(lastRunSummary.weather.description)"
+                  class="weather-icon"
+                ></ion-icon>
+
+                <span class="weather-temp"
+                  >{{ Math.round(lastRunSummary.weather.temp) }}&deg;F</span
+                >
+              </div>
               <ion-grid class="summary-stats-grid">
                 <ion-row>
                   <ion-col size="6" class="summary-stat-item">
@@ -3448,5 +3507,35 @@ ion-progress-bar {
   border-radius: 8px;
 
   border-left: 3px solid #fbbf24;
+}
+
+/* Weather Summary Styles */
+.weather-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin: 0 auto 1.5rem auto;
+  width: fit-content;
+}
+
+.weather-icon {
+  font-size: 2rem;
+  color: #fbbf24; /* Yellow to match other accents */
+}
+
+.weather-description {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.weather-temp {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
 }
 </style>
