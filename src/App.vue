@@ -1806,7 +1806,7 @@ onMounted(() => {
                       )
                     }}
                   </p>
-                  <!-- MAP CONTAINER -->
+                  <!-- MAP CONTAINER-->
                   <div
                     v-if="
                       friend.stats?.lastRun?.route &&
