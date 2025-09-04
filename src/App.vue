@@ -171,7 +171,7 @@ const selectedShoeForRun = ref(null);
 const runSummaryDescription = ref("");
 const logRunDescription = ref("");
 
-/*Map State*/
+// -- MAPS STATE --
 const mapContainer = ref(null); // To get a reference to the div
 let map = null; // We use 'let' because the map instance itself isn't reactive
 let userMarker = null;
@@ -179,29 +179,10 @@ let routePolyline = null;
 const summaryMapContainer = ref(null);
 let summaryMap = null;
 let summaryRoutePolyline = null;
-
-// --- WATCHERS ---
-
-watch(isLiveTrackingModalVisible, (isNowVisible) => {
-  // This function will run whenever 'isLiveTrackingModalVisible' changes.
-  if (isNowVisible) {
-    // When the modal is set to open, wait a brief moment for the
-    // modal's animation to start and for the DOM to be ready.
-    // Then, call initMap.
-    setTimeout(() => {
-      initMap();
-    }, 200); // 200ms is a safe delay to ensure the container exists.
-  }
-});
-
-watch(isSummaryModalVisible, (isNowVisible) => {
-  if (isNowVisible) {
-    // Apply the same logic for the summary map
-    setTimeout(() => {
-      initSummaryMap();
-    }, 200);
-  }
-});
+const mapRefs = ref({});
+let activeCardMaps = [];
+const MAPBOX_ACCESS_TOKEN =
+  "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA";
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -300,6 +281,59 @@ const sortedFriends = computed(() => {
     // Sort by the most recent date first (descending order)
     return new Date(bLastRun) - new Date(aLastRun);
   });
+});
+
+// --- WATCHERS ---
+
+watch(isLiveTrackingModalVisible, (isNowVisible) => {
+  if (isNowVisible) {
+    setTimeout(() => {
+      initMap();
+    }, 200);
+  }
+});
+
+watch(currentPage, (newPage) => {
+  // Always clean up maps from the old page to prevent memory leaks
+  destroyCardMaps();
+
+  // If the new page is one that is supposed to have maps, create them
+  if (newPage === "profile" || newPage === "social") {
+    createVisibleCardMaps();
+  }
+});
+
+// This watcher handles DATA CHANGES for the profile page
+watch(displayedRuns, () => {
+  // If the data changes WHILE we are on the profile page (e.g., delete a run),
+  // recreate the maps to match the new data.
+  if (currentPage.value === "profile") {
+    destroyCardMaps();
+    createVisibleCardMaps();
+  }
+});
+
+// This watcher handles DATA CHANGES for the social feed
+watch(
+  sortedFriends,
+  () => {
+    // If the data changes WHILE we are on the social page (e.g., new run from a friend),
+    // recreate the maps.
+    if (currentPage.value === "social") {
+      destroyCardMaps();
+      createVisibleCardMaps();
+    }
+  },
+  { deep: true }
+);
+
+watch(isSummaryModalVisible, (isNowVisible) => {
+  if (isNowVisible) {
+    // Apply the same logic for the summary map
+    setTimeout(() => {
+      initSummaryMap();
+    }, 200);
+  }
 });
 
 // --- METHODS ---
@@ -493,6 +527,95 @@ async function openUserProfileModal(friend) {
   }
 }
 
+/* Card Map Methods */
+const setMapRef = (key, el) => {
+  if (el) {
+    mapRefs.value[key] = el;
+  }
+};
+
+async function initRunCardMap(container, route) {
+  // Guard against re-initialization and ensure container exists.
+  if (!container || container._leaflet_id) {
+    return;
+  }
+
+  const mapboxAccessToken = MAPBOX_ACCESS_TOKEN;
+  const routeLatLngs = route.map((p) => [p.lat, p.lng]);
+
+  try {
+    const cardMap = L.map(container, {
+      zoomControl: false,
+      dragging: false,
+      touchZoom: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      attributionControl: false, // Keep the UI clean for small cards
+    });
+
+    L.tileLayer(
+      "https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      { accessToken: mapboxAccessToken }
+    ).addTo(cardMap);
+
+    const polyline = L.polyline(routeLatLngs, {
+      color: "#fbbf24",
+      weight: 4,
+    }).addTo(cardMap);
+
+    // This check is crucial. It ensures we only try to fit the map
+    // to the route if the route has actual, valid coordinates.
+    if (polyline.getBounds().isValid()) {
+      cardMap.fitBounds(polyline.getBounds().pad(0.1));
+    }
+
+    activeCardMaps.push(cardMap); // Track map instance for later destruction
+
+    // Final check to ensure size is correct after initialization.
+    requestAnimationFrame(() => {
+      if (cardMap) cardMap.invalidateSize();
+    });
+  } catch (error) {
+    console.error("Error initializing run card map:", error);
+  }
+}
+
+function destroyCardMaps() {
+  activeCardMaps.forEach((map) => {
+    if (map && map.remove) {
+      map.remove();
+    }
+  });
+  activeCardMaps = [];
+  mapRefs.value = {};
+}
+
+function createVisibleCardMaps() {
+  setTimeout(() => {
+    if (currentPage.value === "profile") {
+      displayedRuns.value.forEach((run) => {
+        if (run.route?.length > 0) {
+          const mapContainer = mapRefs.value["run-" + run.id];
+          if (mapContainer && !mapContainer._leaflet_id) {
+            initRunCardMap(mapContainer, run.route);
+          }
+        }
+      });
+    } else if (currentPage.value === "social") {
+      sortedFriends.value.forEach((friend) => {
+        if (friend.stats?.lastRun?.route?.length > 0) {
+          const mapContainer = mapRefs.value["friend-" + friend.uid];
+          if (mapContainer && !mapContainer._leaflet_id) {
+            initRunCardMap(mapContainer, friend.stats.lastRun.route);
+          }
+        }
+      });
+    }
+  }, 100); // A 100ms delay is usually plenty of time for the UI to settle.
+}
+
 /* Weather Methods */
 const openWeatherApiKey = ref("0eba5f215da947c9f966707b84cea466");
 
@@ -539,8 +662,7 @@ async function initMap() {
     return;
   }
 
-  const mapboxAccessToken =
-    "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA"; // <-- PASTE YOUR TOKEN HERE
+  const mapboxAccessToken = MAPBOX_ACCESS_TOKEN;
 
   try {
     console.log("Container found. Initializing map...");
@@ -582,8 +704,7 @@ async function initSummaryMap() {
     return;
   }
 
-  const mapboxAccessToken =
-    "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA"; // <-- PASTE YOUR TOKEN HERE
+  const mapboxAccessToken = MAPBOX_ACCESS_TOKEN;
 
   try {
     summaryMap = L.map(summaryMapContainer.value);
@@ -1260,6 +1381,7 @@ async function updateUserStatsInFirestore() {
               pace: lastRun.pace,
               date: lastRun.date,
               description: lastRun.description || "",
+              route: lastRun.route || null,
             }
           : null,
       },
@@ -1591,7 +1713,7 @@ onMounted(() => {
                   Total: {{ weeklyTotalDistance.toFixed(2) }} mi
                 </p>
                 <div class="chart-container">
-                  <!-- Chart bars remain the same -->
+                  <!-- Chart Bars -->
                   <div
                     v-for="data in weeklyChartData"
                     :key="data.day"
@@ -1601,9 +1723,9 @@ onMounted(() => {
                       class="chart-bar"
                       :style="{ height: data.height + '%' }"
                     >
-                      <span class="bar-value">{{
-                        data.distance.toFixed(1)
-                      }}</span>
+                      <span v-if="data.distance > 0" class="bar-value">
+                        {{ data.distance.toFixed(1) }}
+                      </span>
                     </div>
                     <p class="chart-label">{{ data.day }}</p>
                   </div>
@@ -1613,7 +1735,7 @@ onMounted(() => {
           </div>
         </Transition>
 
-        <!-- Social Page (New Refined Card Layout) -->
+        <!-- Social Page -->
         <Transition name="fade">
           <div v-if="currentPage === 'social'" class="ion-padding">
             <ion-button
@@ -1684,6 +1806,15 @@ onMounted(() => {
                       )
                     }}
                   </p>
+                  <!-- MAP CONTAINER -->
+                  <div
+                    v-if="
+                      friend.stats?.lastRun?.route &&
+                      friend.stats.lastRun.route.length > 0
+                    "
+                    :ref="(el) => setMapRef('friend-' + friend.uid, el)"
+                    class="run-card-map"
+                  ></div>
                   <p
                     v-if="
                       friend.stats &&
@@ -1855,6 +1986,12 @@ onMounted(() => {
                     <p v-if="run.description" class="run-description">
                       "{{ run.description }}"
                     </p>
+                    <!-- MAP CONTAINER -->
+                    <div
+                      v-if="run.route && run.route.length > 0"
+                      :ref="(el) => setMapRef('run-' + run.id, el)"
+                      class="run-card-map"
+                    ></div>
                     <div class="run-history-stats">
                       <div>
                         <p class="stat-label">Distance</p>
@@ -2727,20 +2864,17 @@ onMounted(() => {
 }
 .bar-value {
   position: absolute;
-  top: -20px;
+  top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: white;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.3s;
-  background-color: rgba(0, 0, 0, 0.5);
   padding: 2px 4px;
   border-radius: 3px;
 }
-.chart-bar:hover .bar-value {
-  opacity: 1;
-}
+
 .chart-label {
   margin-top: 8px;
   font-size: 0.8rem;
@@ -3584,5 +3718,16 @@ ion-progress-bar {
   color: #fbbf24; /* The requested yellow color */
   margin-top: 0; /* Remove default paragraph margin */
   margin-bottom: 0.75rem; /* Add space below the date */
+}
+
+/* Run Card Map Styles */
+.run-card-map {
+  height: 150px;
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  background-color: #3a4b7a;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 </style>
