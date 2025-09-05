@@ -64,6 +64,8 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -1540,6 +1542,36 @@ async function updateUsername() {
   }
 }
 
+async function handleGoogleSignIn() {
+  authMessage.value = "";
+  const provider = new GoogleAuthProvider();
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    // After successful sign-in, check if user exists in Firestore
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    // If the user is new, create a document for them
+    if (!userDoc.exists()) {
+      await setDoc(userDocRef, {
+        displayName: user.displayName,
+        displayName_lowercase: user.displayName.toLowerCase(),
+        email: user.email.toLowerCase(),
+        photoURL: user.photoURL, // Save their Google profile picture
+      });
+    }
+
+    // Reload the page to refresh the app state for the logged-in user
+    window.location.reload();
+  } catch (error) {
+    console.error("Google Sign-In Error:", error);
+    authMessage.value = `Error with Google Sign-In: ${error.message}`;
+  }
+}
+
 // --- ON MOUNTED ---
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
@@ -2145,6 +2177,21 @@ onMounted(() => {
                 class="ion-margin-top yellow-button"
               >
                 {{ authView === "signin" ? "Sign In" : "Create Account" }}
+              </ion-button>
+
+              <!-- GOOGLE SIGN-IN BUTTON -->
+              <div class="auth-separator">
+                <span>OR</span>
+              </div>
+
+              <ion-button
+                expand="block"
+                @click="handleGoogleSignIn"
+                color="light"
+                class="ion-margin-top"
+              >
+                <ion-icon slot="start" src="/assets/google-icon.svg"></ion-icon>
+                Sign In with Google
               </ion-button>
 
               <div class="auth-toggle">
@@ -3729,5 +3776,26 @@ ion-progress-bar {
   background-color: #3a4b7a;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Auth Separator Styles */
+.auth-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #d1d5db;
+  margin: 1.5rem 0;
+}
+.auth-separator::before,
+.auth-separator::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.auth-separator:not(:empty)::before {
+  margin-right: 0.5em;
+}
+.auth-separator:not(:empty)::after {
+  margin-left: 0.5em;
 }
 </style>
