@@ -40,82 +40,6 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-android/
-  app/
-    src/
-      androidTest/
-        java/
-          com/
-            getcapacitor/
-              myapp/
-                ExampleInstrumentedTest.java
-      main/
-        java/
-          app/
-            runitup/
-              MainActivity.java
-        res/
-          drawable/
-            ic_launcher_background.xml
-          drawable-v24/
-            ic_launcher_foreground.xml
-          layout/
-            activity_main.xml
-          mipmap-anydpi-v26/
-            ic_launcher_round.xml
-            ic_launcher.xml
-          values/
-            ic_launcher_background.xml
-            strings.xml
-            styles.xml
-          xml/
-            file_paths.xml
-        AndroidManifest.xml
-      test/
-        java/
-          com/
-            getcapacitor/
-              myapp/
-                ExampleUnitTest.java
-    build.gradle
-    capacitor.build.gradle
-    proguard-rules.pro
-  gradle/
-    wrapper/
-      gradle-wrapper.properties
-  build.gradle
-  capacitor.settings.gradle
-  gradle.properties
-  gradlew
-  gradlew.bat
-  settings.gradle
-  variables.gradle
-ios/
-  App/
-    App/
-      Assets.xcassets/
-        AppIcon.appiconset/
-          Contents.json
-        Splash.imageset/
-          Contents.json
-        Contents.json
-      Base.lproj/
-        LaunchScreen.storyboard
-        Main.storyboard
-      AppDelegate.swift
-      Info.plist
-    App.xcodeproj/
-      xcuserdata/
-        kory.buck.xcuserdatad/
-          xcschemes/
-            xcschememanagement.plist
-      project.pbxproj
-    App.xcworkspace/
-      xcshareddata/
-        IDEWorkspaceChecks.plist
-      contents.xcworkspacedata
-    Podfile
-    Podfile.lock
 public/
   icons/
     boot.svg
@@ -141,1115 +65,6 @@ vite.config.js
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="ios/App/App.xcodeproj/xcuserdata/kory.buck.xcuserdatad/xcschemes/xcschememanagement.plist">
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>SchemeUserState</key>
-	<dict>
-		<key>App.xcscheme_^#shared#^_</key>
-		<dict>
-			<key>orderHint</key>
-			<integer>4</integer>
-		</dict>
-	</dict>
-</dict>
-</plist>
-</file>
-
-<file path="android/app/src/androidTest/java/com/getcapacitor/myapp/ExampleInstrumentedTest.java">
-package com.getcapacitor.myapp;
-
-import static org.junit.Assert.*;
-
-import android.content.Context;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.test.platform.app.InstrumentationRegistry;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
- */
-@RunWith(AndroidJUnit4.class)
-public class ExampleInstrumentedTest {
-
-    @Test
-    public void useAppContext() throws Exception {
-        // Context of the app under test.
-        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-
-        assertEquals("com.getcapacitor.app", appContext.getPackageName());
-    }
-}
-</file>
-
-<file path="android/app/src/main/java/app/runitup/MainActivity.java">
-package app.runitup;
-
-import com.getcapacitor.BridgeActivity;
-
-public class MainActivity extends BridgeActivity {}
-</file>
-
-<file path="android/app/src/main/res/drawable/ic_launcher_background.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportHeight="108"
-    android:viewportWidth="108">
-    <path
-        android:fillColor="#26A69A"
-        android:pathData="M0,0h108v108h-108z" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M9,0L9,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,0L19,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M29,0L29,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M39,0L39,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M49,0L49,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M59,0L59,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M69,0L69,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M79,0L79,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M89,0L89,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M99,0L99,108"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,9L108,9"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,19L108,19"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,29L108,29"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,39L108,39"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,49L108,49"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,59L108,59"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,69L108,69"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,79L108,79"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,89L108,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M0,99L108,99"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,29L89,29"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,39L89,39"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,49L89,49"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,59L89,59"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,69L89,69"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M19,79L89,79"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M29,19L29,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M39,19L39,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M49,19L49,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M59,19L59,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M69,19L69,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M79,19L79,89"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="0.8" />
-</vector>
-</file>
-
-<file path="android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml">
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportHeight="108"
-    android:viewportWidth="108">
-    <path
-        android:fillType="evenOdd"
-        android:pathData="M32,64C32,64 38.39,52.99 44.13,50.95C51.37,48.37 70.14,49.57 70.14,49.57L108.26,87.69L108,109.01L75.97,107.97L32,64Z"
-        android:strokeColor="#00000000"
-        android:strokeWidth="1">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="78.5885"
-                android:endY="90.9159"
-                android:startX="48.7653"
-                android:startY="61.0927"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M66.94,46.02L66.94,46.02C72.44,50.07 76,56.61 76,64L32,64C32,56.61 35.56,50.11 40.98,46.06L36.18,41.19C35.45,40.45 35.45,39.3 36.18,38.56C36.91,37.81 38.05,37.81 38.78,38.56L44.25,44.05C47.18,42.57 50.48,41.71 54,41.71C57.48,41.71 60.78,42.57 63.68,44.05L69.11,38.56C69.84,37.81 70.98,37.81 71.71,38.56C72.44,39.3 72.44,40.45 71.71,41.19L66.94,46.02ZM62.94,56.92C64.08,56.92 65,56.01 65,54.88C65,53.76 64.08,52.85 62.94,52.85C61.8,52.85 60.88,53.76 60.88,54.88C60.88,56.01 61.8,56.92 62.94,56.92ZM45.06,56.92C46.2,56.92 47.13,56.01 47.13,54.88C47.13,53.76 46.2,52.85 45.06,52.85C43.92,52.85 43,53.76 43,54.88C43,56.01 43.92,56.92 45.06,56.92Z"
-        android:strokeColor="#00000000"
-        android:strokeWidth="1" />
-</vector>
-</file>
-
-<file path="android/app/src/main/res/layout/activity_main.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
-    <WebView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
-</file>
-
-<file path="android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-</adaptive-icon>
-</file>
-
-<file path="android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-</adaptive-icon>
-</file>
-
-<file path="android/app/src/main/res/values/ic_launcher_background.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
-</resources>
-</file>
-
-<file path="android/app/src/main/res/values/strings.xml">
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">RunItUp</string>
-    <string name="title_activity_main">RunItUp</string>
-    <string name="package_name">app.runitup</string>
-    <string name="custom_url_scheme">app.runitup</string>
-</resources>
-</file>
-
-<file path="android/app/src/main/res/values/styles.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <!-- Customize your theme here. -->
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-    </style>
-
-    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-        <item name="android:background">@null</item>
-    </style>
-
-
-    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
-    </style>
-</resources>
-</file>
-
-<file path="android/app/src/main/res/xml/file_paths.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
-</paths>
-</file>
-
-<file path="android/app/src/main/AndroidManifest.xml">
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme">
-
-        <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
-            android:name=".MainActivity"
-            android:label="@string/title_activity_main"
-            android:theme="@style/AppTheme.NoActionBarLaunch"
-            android:launchMode="singleTask"
-            android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-        </activity>
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
-        </provider>
-    </application>
-
-    <!-- Permissions -->
-
-    <uses-permission android:name="android.permission.INTERNET" />
-</manifest>
-</file>
-
-<file path="android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java">
-package com.getcapacitor.myapp;
-
-import static org.junit.Assert.*;
-
-import org.junit.Test;
-
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
- */
-public class ExampleUnitTest {
-
-    @Test
-    public void addition_isCorrect() throws Exception {
-        assertEquals(4, 2 + 2);
-    }
-}
-</file>
-
-<file path="android/app/build.gradle">
-apply plugin: 'com.android.application'
-
-android {
-    namespace "app.runitup"
-    compileSdk rootProject.ext.compileSdkVersion
-    defaultConfig {
-        applicationId "app.runitup"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
-        }
-    }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-}
-
-repositories {
-    flatDir{
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
-    }
-}
-
-dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
-    implementation project(':capacitor-android')
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation project(':capacitor-cordova-android-plugins')
-}
-
-apply from: 'capacitor.build.gradle'
-
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
-}
-</file>
-
-<file path="android/app/proguard-rules.pro">
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-</file>
-
-<file path="android/gradle/wrapper/gradle-wrapper.properties">
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-</file>
-
-<file path="android/build.gradle">
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-
-buildscript {
-    
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.7.2'
-        classpath 'com.google.gms:google-services:4.4.2'
-
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
-}
-
-apply from: "variables.gradle"
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
-</file>
-
-<file path="android/gradle.properties">
-# Project-wide Gradle settings.
-
-# IDE (e.g. Android Studio) users:
-# Gradle settings configured through the IDE *will override*
-# any settings specified in this file.
-
-# For more details on how to configure your build environment visit
-# http://www.gradle.org/docs/current/userguide/build_environment.html
-
-# Specifies the JVM arguments used for the daemon process.
-# The setting is particularly useful for tweaking memory settings.
-org.gradle.jvmargs=-Xmx1536m
-
-# When configured, Gradle will run in incubating parallel mode.
-# This option should only be used with decoupled projects. More details, visit
-# http://www.gradle.org/docs/current/userguide/multi_project_builds.html#sec:decoupled_projects
-# org.gradle.parallel=true
-
-# AndroidX package structure to make it clearer which packages are bundled with the
-# Android operating system, and which are packaged with your app's APK
-# https://developer.android.com/topic/libraries/support-library/androidx-rn
-android.useAndroidX=true
-</file>
-
-<file path="android/gradlew">
-#!/bin/sh
-
-#
-# Copyright © 2015-2021 the original authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
-##############################################################################
-#
-#   Gradle start up script for POSIX generated by Gradle.
-#
-#   Important for running:
-#
-#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
-#       noncompliant, but you have some other compliant shell such as ksh or
-#       bash, then to run this script, type that shell name before the whole
-#       command line, like:
-#
-#           ksh Gradle
-#
-#       Busybox and similar reduced shells will NOT work, because this script
-#       requires all of these POSIX shell features:
-#         * functions;
-#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
-#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
-#         * compound commands having a testable exit status, especially «case»;
-#         * various built-in commands including «command», «set», and «ulimit».
-#
-#   Important for patching:
-#
-#   (2) This script targets any POSIX shell, so it avoids extensions provided
-#       by Bash, Ksh, etc; in particular arrays are avoided.
-#
-#       The "traditional" practice of packing multiple parameters into a
-#       space-separated string is a well documented source of bugs and security
-#       problems, so this is (mostly) avoided, by progressively accumulating
-#       options in "$@", and eventually passing that to Java.
-#
-#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
-#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
-#       see the in-line comments for details.
-#
-#       There are tweaks for specific operating systems such as AIX, CygWin,
-#       Darwin, MinGW, and NonStop.
-#
-#   (3) This script is generated from the Groovy template
-#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
-#       within the Gradle project.
-#
-#       You can find Gradle at https://github.com/gradle/gradle/.
-#
-##############################################################################
-
-# Attempt to set APP_HOME
-
-# Resolve links: $0 may be a link
-app_path=$0
-
-# Need this for daisy-chained symlinks.
-while
-    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
-    [ -h "$app_path" ]
-do
-    ls=$( ls -ld "$app_path" )
-    link=${ls#*' -> '}
-    case $link in             #(
-      /*)   app_path=$link ;; #(
-      *)    app_path=$APP_HOME$link ;;
-    esac
-done
-
-# This is normally unused
-# shellcheck disable=SC2034
-APP_BASE_NAME=${0##*/}
-# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
-APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
-' "$PWD" ) || exit
-
-# Use the maximum available, or set MAX_FD != -1 to use that value.
-MAX_FD=maximum
-
-warn () {
-    echo "$*"
-} >&2
-
-die () {
-    echo
-    echo "$*"
-    echo
-    exit 1
-} >&2
-
-# OS specific support (must be 'true' or 'false').
-cygwin=false
-msys=false
-darwin=false
-nonstop=false
-case "$( uname )" in                #(
-  CYGWIN* )         cygwin=true  ;; #(
-  Darwin* )         darwin=true  ;; #(
-  MSYS* | MINGW* )  msys=true    ;; #(
-  NONSTOP* )        nonstop=true ;;
-esac
-
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-
-
-# Determine the Java command to use to start the JVM.
-if [ -n "$JAVA_HOME" ] ; then
-    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
-        # IBM's JDK on AIX uses strange locations for the executables
-        JAVACMD=$JAVA_HOME/jre/sh/java
-    else
-        JAVACMD=$JAVA_HOME/bin/java
-    fi
-    if [ ! -x "$JAVACMD" ] ; then
-        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
-
-Please set the JAVA_HOME variable in your environment to match the
-location of your Java installation."
-    fi
-else
-    JAVACMD=java
-    if ! command -v java >/dev/null 2>&1
-    then
-        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
-
-Please set the JAVA_HOME variable in your environment to match the
-location of your Java installation."
-    fi
-fi
-
-# Increase the maximum file descriptors if we can.
-if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
-    case $MAX_FD in #(
-      max*)
-        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
-        # shellcheck disable=SC2039,SC3045
-        MAX_FD=$( ulimit -H -n ) ||
-            warn "Could not query maximum file descriptor limit"
-    esac
-    case $MAX_FD in  #(
-      '' | soft) :;; #(
-      *)
-        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
-        # shellcheck disable=SC2039,SC3045
-        ulimit -n "$MAX_FD" ||
-            warn "Could not set maximum file descriptor limit to $MAX_FD"
-    esac
-fi
-
-# Collect all arguments for the java command, stacking in reverse order:
-#   * args from the command line
-#   * the main class name
-#   * -classpath
-#   * -D...appname settings
-#   * --module-path (only if needed)
-#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
-
-# For Cygwin or MSYS, switch paths to Windows format before running java
-if "$cygwin" || "$msys" ; then
-    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
-    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
-
-    JAVACMD=$( cygpath --unix "$JAVACMD" )
-
-    # Now convert the arguments - kludge to limit ourselves to /bin/sh
-    for arg do
-        if
-            case $arg in                                #(
-              -*)   false ;;                            # don't mess with options #(
-              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
-                    [ -e "$t" ] ;;                      #(
-              *)    false ;;
-            esac
-        then
-            arg=$( cygpath --path --ignore --mixed "$arg" )
-        fi
-        # Roll the args list around exactly as many times as the number of
-        # args, so each arg winds up back in the position where it started, but
-        # possibly modified.
-        #
-        # NB: a `for` loop captures its iteration list before it begins, so
-        # changing the positional parameters here affects neither the number of
-        # iterations, nor the values presented in `arg`.
-        shift                   # remove old arg
-        set -- "$@" "$arg"      # push replacement arg
-    done
-fi
-
-
-# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-
-# Collect all arguments for the java command:
-#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
-#     and any embedded shellness will be escaped.
-#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
-#     treated as '${Hostname}' itself on the command line.
-
-set -- \
-        "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
-        org.gradle.wrapper.GradleWrapperMain \
-        "$@"
-
-# Stop when "xargs" is not available.
-if ! command -v xargs >/dev/null 2>&1
-then
-    die "xargs is not available"
-fi
-
-# Use "xargs" to parse quoted args.
-#
-# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
-#
-# In Bash we could simply go:
-#
-#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
-#   set -- "${ARGS[@]}" "$@"
-#
-# but POSIX shell has neither arrays nor command substitution, so instead we
-# post-process each arg (as a line of input to sed) to backslash-escape any
-# character that might be a shell metacharacter, then use eval to reverse
-# that process (while maintaining the separation between arguments), and wrap
-# the whole thing up as a single "set" statement.
-#
-# This will of course break if any of these variables contains a newline or
-# an unmatched quote.
-#
-
-eval "set -- $(
-        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
-        xargs -n1 |
-        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
-        tr '\n' ' '
-    )" '"$@"'
-
-exec "$JAVACMD" "$@"
-</file>
-
-<file path="android/gradlew.bat">
-@rem
-@rem Copyright 2015 the original author or authors.
-@rem
-@rem Licensed under the Apache License, Version 2.0 (the "License");
-@rem you may not use this file except in compliance with the License.
-@rem You may obtain a copy of the License at
-@rem
-@rem      https://www.apache.org/licenses/LICENSE-2.0
-@rem
-@rem Unless required by applicable law or agreed to in writing, software
-@rem distributed under the License is distributed on an "AS IS" BASIS,
-@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-@rem See the License for the specific language governing permissions and
-@rem limitations under the License.
-@rem
-@rem SPDX-License-Identifier: Apache-2.0
-@rem
-
-@if "%DEBUG%"=="" @echo off
-@rem ##########################################################################
-@rem
-@rem  Gradle startup script for Windows
-@rem
-@rem ##########################################################################
-
-@rem Set local scope for the variables with windows NT shell
-if "%OS%"=="Windows_NT" setlocal
-
-set DIRNAME=%~dp0
-if "%DIRNAME%"=="" set DIRNAME=.
-@rem This is normally unused
-set APP_BASE_NAME=%~n0
-set APP_HOME=%DIRNAME%
-
-@rem Resolve any "." and ".." in APP_HOME to make it shorter.
-for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
-
-@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
-
-@rem Find java.exe
-if defined JAVA_HOME goto findJavaFromJavaHome
-
-set JAVA_EXE=java.exe
-%JAVA_EXE% -version >NUL 2>&1
-if %ERRORLEVEL% equ 0 goto execute
-
-echo. 1>&2
-echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
-
-goto fail
-
-:findJavaFromJavaHome
-set JAVA_HOME=%JAVA_HOME:"=%
-set JAVA_EXE=%JAVA_HOME%/bin/java.exe
-
-if exist "%JAVA_EXE%" goto execute
-
-echo. 1>&2
-echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
-echo. 1>&2
-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
-echo location of your Java installation. 1>&2
-
-goto fail
-
-:execute
-@rem Setup the command line
-
-set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-
-
-@rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
-
-:end
-@rem End local scope for the variables with windows NT shell
-if %ERRORLEVEL% equ 0 goto mainEnd
-
-:fail
-rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
-rem the _cmd.exe /c_ return code!
-set EXIT_CODE=%ERRORLEVEL%
-if %EXIT_CODE% equ 0 set EXIT_CODE=1
-if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
-exit /b %EXIT_CODE%
-
-:mainEnd
-if "%OS%"=="Windows_NT" endlocal
-
-:omega
-</file>
-
-<file path="android/settings.gradle">
-include ':app'
-include ':capacitor-cordova-android-plugins'
-project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
-
-apply from: 'capacitor.settings.gradle'
-</file>
-
-<file path="android/variables.gradle">
-ext {
-    minSdkVersion = 23
-    compileSdkVersion = 35
-    targetSdkVersion = 35
-    androidxActivityVersion = '1.9.2'
-    androidxAppCompatVersion = '1.7.0'
-    androidxCoordinatorLayoutVersion = '1.2.0'
-    androidxCoreVersion = '1.15.0'
-    androidxFragmentVersion = '1.8.4'
-    coreSplashScreenVersion = '1.0.1'
-    androidxWebkitVersion = '1.12.1'
-    junitVersion = '4.13.2'
-    androidxJunitVersion = '1.2.1'
-    androidxEspressoCoreVersion = '3.6.1'
-    cordovaAndroidVersion = '10.1.1'
-}
-</file>
-
-<file path="ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json">
-{
-  "images" : [
-    {
-      "filename" : "AppIcon-512@2x.png",
-      "idiom" : "universal",
-      "platform" : "ios",
-      "size" : "1024x1024"
-    }
-  ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
-  }
-}
-</file>
-
-<file path="ios/App/App/Assets.xcassets/Splash.imageset/Contents.json">
-{
-  "images" : [
-    {
-      "idiom" : "universal",
-      "filename" : "splash-2732x2732-2.png",
-      "scale" : "1x"
-    },
-    {
-      "idiom" : "universal",
-      "filename" : "splash-2732x2732-1.png",
-      "scale" : "2x"
-    },
-    {
-      "idiom" : "universal",
-      "filename" : "splash-2732x2732.png",
-      "scale" : "3x"
-    }
-  ],
-  "info" : {
-    "version" : 1,
-    "author" : "xcode"
-  }
-}
-</file>
-
-<file path="ios/App/App/Assets.xcassets/Contents.json">
-{
-  "info" : {
-    "version" : 1,
-    "author" : "xcode"
-  }
-}
-</file>
-
-<file path="ios/App/App/Base.lproj/LaunchScreen.storyboard">
-<?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17132" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-    <device id="retina4_7" orientation="portrait" appearance="light"/>
-    <dependencies>
-        <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17105"/>
-        <capability name="System colors in document resources" minToolsVersion="11.0"/>
-        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
-    </dependencies>
-    <scenes>
-        <!--View Controller-->
-        <scene sceneID="EHf-IW-A2E">
-            <objects>
-                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
-                    <imageView key="view" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="Splash" id="snD-IY-ifK">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
-                        <autoresizingMask key="autoresizingMask"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                    </imageView>
-                </viewController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="53" y="375"/>
-        </scene>
-    </scenes>
-    <resources>
-        <image name="Splash" width="1366" height="1366"/>
-        <systemColor name="systemBackgroundColor">
-            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-        </systemColor>
-    </resources>
-</document>
-</file>
-
-<file path="ios/App/App/Base.lproj/Main.storyboard">
-<?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14111" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
-    <device id="retina4_7" orientation="portrait">
-        <adaptation id="fullscreen"/>
-    </device>
-    <dependencies>
-        <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14088"/>
-    </dependencies>
-    <scenes>
-        <!--Bridge View Controller-->
-        <scene sceneID="tne-QT-ifu">
-            <objects>
-                <viewController id="BYZ-38-t0r" customClass="CAPBridgeViewController" customModule="Capacitor" sceneMemberID="viewController"/>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
-            </objects>
-        </scene>
-    </scenes>
-</document>
-</file>
-
-<file path="ios/App/App/AppDelegate.swift">
-import UIKit
-import Capacitor
-
-@UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-
-    var window: UIWindow?
-
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
-        return true
-    }
-
-    func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
-    }
-
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
-        // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
-    }
-
-    func applicationWillEnterForeground(_ application: UIApplication) {
-        // Called as part of the transition from the background to the active state; here you can undo many of the changes made on entering the background.
-    }
-
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-    }
-
-    func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
-    }
-
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        // Called when the app was launched with a url. Feel free to add additional processing here,
-        // but if you want the App API to support tracking app url opens, make sure to keep this call
-        return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
-    }
-
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Called when the app was launched with an activity, including Universal Links.
-        // Feel free to add additional processing here, but if you want the App API to support
-        // tracking app url opens, make sure to keep this call
-        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
-    }
-
-}
-</file>
-
-<file path="ios/App/App.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist">
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>IDEDidComputeMac32BitWarning</key>
-	<true/>
-</dict>
-</plist>
-</file>
 
 <file path="public/manifest.json">
 {
@@ -1476,190 +291,6 @@ export default defineConfig({
 })
 </file>
 
-<file path="ios/App/App/Info.plist">
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
-	<key>CFBundleDisplayName</key>
-        <string>RunItUp</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UIUserInterfaceStyle</key>
-<string>Dark</string>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>armv7</string>
-	</array>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<true/>
-</dict>
-</plist>
-</file>
-
-<file path="ios/App/App.xcworkspace/contents.xcworkspacedata">
-<?xml version="1.0" encoding="UTF-8"?>
-<Workspace
-   version = "1.0">
-   <Group
-      location = "group:App"
-      name = "App">
-      <FileRef
-         location = "container:Podfile">
-      </FileRef>
-      <FileRef
-         location = "container:App.xcodeproj">
-      </FileRef>
-      <FileRef
-         location = "group:Assets.xcassets">
-      </FileRef>
-      <Group
-         location = "group:Base.lproj"
-         name = "Base.lproj">
-         <FileRef
-            location = "group:LaunchScreen.storyboard">
-         </FileRef>
-         <FileRef
-            location = "group:Main.storyboard">
-         </FileRef>
-      </Group>
-      <FileRef
-         location = "group:config.xml">
-      </FileRef>
-      <Group
-         location = "group:public"
-         name = "public">
-         <FileRef
-            location = "group:index.html">
-         </FileRef>
-         <FileRef
-            location = "group:cordova.js">
-         </FileRef>
-         <FileRef
-            location = "group:vite.svg">
-         </FileRef>
-         <Group
-            location = "group:icons"
-            name = "icons">
-            <FileRef
-               location = "group:boot.svg">
-            </FileRef>
-         </Group>
-         <FileRef
-            location = "group:cordova_plugins.js">
-         </FileRef>
-         <Group
-            location = "group:assets"
-            name = "assets">
-            <FileRef
-               location = "group:index-D1WUwHAH.js">
-            </FileRef>
-            <FileRef
-               location = "group:web-CvfcygOG.js">
-            </FileRef>
-            <FileRef
-               location = "group:status-tap-Dmh8yS0e.js">
-            </FileRef>
-            <FileRef
-               location = "group:index-BydKqz7v.js">
-            </FileRef>
-            <FileRef
-               location = "group:input-shims-BpDZWsi1.js">
-            </FileRef>
-            <FileRef
-               location = "group:index-CHojCCTp.css">
-            </FileRef>
-            <FileRef
-               location = "group:focus-visible-supuXXMI.js">
-            </FileRef>
-            <FileRef
-               location = "group:index7-BWJEL5r-.js">
-            </FileRef>
-         </Group>
-      </Group>
-      <FileRef
-         location = "group:capacitor.config.json">
-      </FileRef>
-      <FileRef
-         location = "group:AppDelegate.swift">
-      </FileRef>
-      <FileRef
-         location = "group:Info.plist">
-      </FileRef>
-   </Group>
-   <FileRef
-      location = "group:App.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:Pods/Pods.xcodeproj">
-   </FileRef>
-</Workspace>
-</file>
-
-<file path="ios/App/Podfile.lock">
-PODS:
-  - Capacitor (7.4.2):
-    - CapacitorCordova
-  - CapacitorCordova (7.4.2)
-  - CapacitorHaptics (7.0.1):
-    - Capacitor
-
-DEPENDENCIES:
-  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
-  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
-  - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
-
-EXTERNAL SOURCES:
-  Capacitor:
-    :path: "../../node_modules/@capacitor/ios"
-  CapacitorCordova:
-    :path: "../../node_modules/@capacitor/ios"
-  CapacitorHaptics:
-    :path: "../../node_modules/@capacitor/haptics"
-
-SPEC CHECKSUMS:
-  Capacitor: 156d98aba46ec01dde72c4bbb92fa626837cad29
-  CapacitorCordova: 5e58d04631bc5094894ac106e2bf1da18a9e6151
-  CapacitorHaptics: 70e47470fa1a6bd6338cd102552e3846b7f9a1b3
-
-PODFILE CHECKSUM: 77e136fb208c6c2a6494b7b510a7f97b304ff314
-
-COCOAPODS: 1.16.2
-</file>
-
 <file path="public/icons/boot.svg">
 <svg width="160" height="160" viewBox="0 0 160 160" shape-rendering="geometricPrecision" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <rect x="1" y="1" width="159" height="159" fill="url(#pattern0_1_2)"/>
@@ -1698,64 +329,6 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 </file>
 
-<file path="android/app/capacitor.build.gradle">
-// DO NOT EDIT THIS FILE! IT IS GENERATED EACH TIME "capacitor update" IS RUN
-
-android {
-  compileOptions {
-      sourceCompatibility JavaVersion.VERSION_21
-      targetCompatibility JavaVersion.VERSION_21
-  }
-}
-
-apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
-dependencies {
-    implementation project(':capacitor-haptics')
-
-}
-
-
-if (hasProperty('postBuildExtras')) {
-  postBuildExtras()
-}
-</file>
-
-<file path="android/capacitor.settings.gradle">
-// DO NOT EDIT THIS FILE! IT IS GENERATED EACH TIME "capacitor update" IS RUN
-include ':capacitor-android'
-project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
-
-include ':capacitor-haptics'
-project(':capacitor-haptics').projectDir = new File('../node_modules/@capacitor/haptics/android')
-</file>
-
-<file path="ios/App/Podfile">
-require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
-
-platform :ios, '14.0'
-use_frameworks!
-
-# workaround to avoid Xcode caching of Pods that requires
-# Product -> Clean Build Folder after new Cordova plugins installed
-# Requires CocoaPods 1.6 or newer
-install! 'cocoapods', :disable_input_output_paths => true
-
-def capacitor_pods
-  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
-  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
-  pod 'CapacitorHaptics', :path => '../../node_modules/@capacitor/haptics'
-end
-
-target 'App' do
-  capacitor_pods
-  # Add your Pods here
-end
-
-post_install do |installer|
-  assertDeploymentTarget(installer)
-end
-</file>
-
 <file path="package.json">
 {
   "name": "runitup-final",
@@ -1783,419 +356,6 @@ end
     "@vitejs/plugin-vue": "^6.0.0",
     "vite": "^7.0.4"
   }
-}
-</file>
-
-<file path="ios/App/App.xcodeproj/project.pbxproj">
-// !$*UTF8*$!
-{
-	archiveVersion = 1;
-	classes = {
-	};
-	objectVersion = 48;
-	objects = {
-
-/* Begin PBXBuildFile section */
-		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
-		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
-		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
-		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
-		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
-		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
-		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
-		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
-/* End PBXBuildFile section */
-
-/* Begin PBXFileReference section */
-		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
-		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
-		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
-		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
-		6FF7002D2E37C8EA001A83BF /* App.xcworkspace */ = {isa = PBXFileReference; lastKnownFileType = wrapper.workspace; path = App.xcworkspace; sourceTree = "<group>"; };
-		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
-		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
-/* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		504EC3011FED79650016851F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		27E2DDA53C4D2A4D1A88CE4A /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		504EC2FB1FED79650016851F = {
-			isa = PBXGroup;
-			children = (
-				6FF7002D2E37C8EA001A83BF /* App.xcworkspace */,
-				504EC3061FED79650016851F /* App */,
-				504EC3051FED79650016851F /* Products */,
-				7F8756D8B27F46E3366F6CEA /* Pods */,
-				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
-			);
-			sourceTree = "<group>";
-		};
-		504EC3051FED79650016851F /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				504EC3041FED79650016851F /* App.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		504EC3061FED79650016851F /* App */ = {
-			isa = PBXGroup;
-			children = (
-				50379B222058CBB4000EE86E /* capacitor.config.json */,
-				504EC3071FED79650016851F /* AppDelegate.swift */,
-				504EC30B1FED79650016851F /* Main.storyboard */,
-				504EC30E1FED79650016851F /* Assets.xcassets */,
-				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
-				504EC3131FED79650016851F /* Info.plist */,
-				2FAD9762203C412B000D30F8 /* config.xml */,
-				50B271D01FEDC1A000F3C39B /* public */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		7F8756D8B27F46E3366F6CEA /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */,
-				AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */,
-			);
-			name = Pods;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
-
-/* Begin PBXNativeTarget section */
-		504EC3031FED79650016851F /* App */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
-			buildPhases = (
-				6634F4EFEBD30273BCE97C65 /* [CP] Check Pods Manifest.lock */,
-				504EC3001FED79650016851F /* Sources */,
-				504EC3011FED79650016851F /* Frameworks */,
-				504EC3021FED79650016851F /* Resources */,
-				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = App;
-			productName = App;
-			productReference = 504EC3041FED79650016851F /* App.app */;
-			productType = "com.apple.product-type.application";
-		};
-/* End PBXNativeTarget section */
-
-/* Begin PBXProject section */
-		504EC2FC1FED79650016851F /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				LastSwiftUpdateCheck = 0920;
-				LastUpgradeCheck = 0920;
-				TargetAttributes = {
-					504EC3031FED79650016851F = {
-						CreatedOnToolsVersion = 9.2;
-						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
-					};
-				};
-			};
-			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
-			compatibilityVersion = "Xcode 8.0";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-			);
-			mainGroup = 504EC2FB1FED79650016851F;
-			productRefGroup = 504EC3051FED79650016851F /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				504EC3031FED79650016851F /* App */,
-			);
-		};
-/* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		504EC3021FED79650016851F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
-				50B271D11FEDC1A000F3C39B /* public in Resources */,
-				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
-				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
-				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
-				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		6634F4EFEBD30273BCE97C65 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-App-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-App/Pods-App-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
-
-/* Begin PBXSourcesBuildPhase section */
-		504EC3001FED79650016851F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
-/* Begin PBXVariantGroup section */
-		504EC30B1FED79650016851F /* Main.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				504EC30C1FED79650016851F /* Base */,
-			);
-			name = Main.storyboard;
-			sourceTree = "<group>";
-		};
-		504EC3101FED79650016851F /* LaunchScreen.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				504EC3111FED79650016851F /* Base */,
-			);
-			name = LaunchScreen.storyboard;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
-
-/* Begin XCBuildConfiguration section */
-		504EC3141FED79650016851F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
-				MTL_ENABLE_DEBUG_INFO = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		504EC3151FED79650016851F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				SDKROOT = iphoneos;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		504EC3171FED79650016851F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
-				PRODUCT_BUNDLE_IDENTIFIER = app.runitup;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		504EC3181FED79650016851F /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = app.runitup;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-/* End XCBuildConfiguration section */
-
-/* Begin XCConfigurationList section */
-		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				504EC3141FED79650016851F /* Debug */,
-				504EC3151FED79650016851F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				504EC3171FED79650016851F /* Debug */,
-				504EC3181FED79650016851F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-/* End XCConfigurationList section */
-	};
-	rootObject = 504EC2FC1FED79650016851F /* Project object */;
 }
 </file>
 
@@ -2362,7 +522,7 @@ ion-content {
 
 <file path="src/App.vue">
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue"; // NEW: Added onUnmounted
 import {
   IonApp,
   IonHeader,
@@ -2427,6 +587,8 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -2452,6 +614,9 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { storage } from "./firebase-config.js";
+
+// --- NEW: Ref for IonContent to attach scroll listener ---
+const contentRef = ref(null);
 
 // --- STATE ---
 const isLoading = ref(true);
@@ -2534,7 +699,7 @@ const selectedShoeForRun = ref(null);
 const runSummaryDescription = ref("");
 const logRunDescription = ref("");
 
-/*Map State*/
+// -- MAPS STATE --
 const mapContainer = ref(null); // To get a reference to the div
 let map = null; // We use 'let' because the map instance itself isn't reactive
 let userMarker = null;
@@ -2542,29 +707,10 @@ let routePolyline = null;
 const summaryMapContainer = ref(null);
 let summaryMap = null;
 let summaryRoutePolyline = null;
-
-// --- WATCHERS ---
-
-watch(isLiveTrackingModalVisible, (isNowVisible) => {
-  // This function will run whenever 'isLiveTrackingModalVisible' changes.
-  if (isNowVisible) {
-    // When the modal is set to open, wait a brief moment for the
-    // modal's animation to start and for the DOM to be ready.
-    // Then, call initMap.
-    setTimeout(() => {
-      initMap();
-    }, 200); // 200ms is a safe delay to ensure the container exists.
-  }
-});
-
-watch(isSummaryModalVisible, (isNowVisible) => {
-  if (isNowVisible) {
-    // Apply the same logic for the summary map
-    setTimeout(() => {
-      initSummaryMap();
-    }, 200);
-  }
-});
+const mapRefs = ref({});
+let activeCardMaps = [];
+const MAPBOX_ACCESS_TOKEN =
+  "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA";
 
 // --- COMPUTED ---
 const currentLevel = computed(() => {
@@ -2647,6 +793,75 @@ const averagePaceInSelectedShoe = computed(() => {
     selectedShoeDetails.value.totalTime /
     selectedShoeDetails.value.totalDistance
   );
+});
+
+const sortedFriends = computed(() => {
+  // Create a shallow copy to avoid mutating the original array
+  return [...friends.value].sort((a, b) => {
+    const aLastRun = a.stats?.lastRun?.date;
+    const bLastRun = b.stats?.lastRun?.date;
+
+    // If 'b' has no last run, it should come after 'a'
+    if (!bLastRun) return -1;
+    // If 'a' has no last run, it should come after 'b'
+    if (!aLastRun) return 1;
+
+    // Sort by the most recent date first (descending order)
+    return new Date(bLastRun) - new Date(aLastRun);
+  });
+});
+
+// --- WATCHERS ---
+
+watch(isLiveTrackingModalVisible, (isNowVisible) => {
+  if (isNowVisible) {
+    setTimeout(() => {
+      initMap();
+    }, 200);
+  }
+});
+
+watch(currentPage, (newPage) => {
+  // Always clean up maps from the old page to prevent memory leaks
+  destroyCardMaps();
+
+  // If the new page is one that is supposed to have maps, create them
+  if (newPage === "profile" || newPage === "social") {
+    createVisibleCardMaps();
+  }
+});
+
+// This watcher handles DATA CHANGES for the profile page
+watch(displayedRuns, () => {
+  // If the data changes WHILE we are on the profile page (e.g., delete a run),
+  // recreate the maps to match the new data.
+  if (currentPage.value === "profile") {
+    destroyCardMaps();
+    createVisibleCardMaps();
+  }
+});
+
+// This watcher handles DATA CHANGES for the social feed
+watch(
+  sortedFriends,
+  () => {
+    // If the data changes WHILE we are on the social page (e.g., new run from a friend),
+    // recreate the maps.
+    if (currentPage.value === "social") {
+      destroyCardMaps();
+      createVisibleCardMaps();
+    }
+  },
+  { deep: true }
+);
+
+watch(isSummaryModalVisible, (isNowVisible) => {
+  if (isNowVisible) {
+    // Apply the same logic for the summary map
+    setTimeout(() => {
+      initSummaryMap();
+    }, 200);
+  }
 });
 
 // --- METHODS ---
@@ -2840,6 +1055,95 @@ async function openUserProfileModal(friend) {
   }
 }
 
+/* Card Map Methods */
+const setMapRef = (key, el) => {
+  if (el) {
+    mapRefs.value[key] = el;
+  }
+};
+
+async function initRunCardMap(container, route) {
+  // Guard against re-initialization and ensure container exists.
+  if (!container || container._leaflet_id) {
+    return;
+  }
+
+  const mapboxAccessToken = MAPBOX_ACCESS_TOKEN;
+  const routeLatLngs = route.map((p) => [p.lat, p.lng]);
+
+  try {
+    const cardMap = L.map(container, {
+      zoomControl: false,
+      dragging: false,
+      touchZoom: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      attributionControl: false, // Keep the UI clean for small cards
+    });
+
+    L.tileLayer(
+      "https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}",
+      { accessToken: mapboxAccessToken }
+    ).addTo(cardMap);
+
+    const polyline = L.polyline(routeLatLngs, {
+      color: "#fbbf24",
+      weight: 4,
+    }).addTo(cardMap);
+
+    // This check is crucial. It ensures we only try to fit the map
+    // to the route if the route has actual, valid coordinates.
+    if (polyline.getBounds().isValid()) {
+      cardMap.fitBounds(polyline.getBounds().pad(0.1));
+    }
+
+    activeCardMaps.push(cardMap); // Track map instance for later destruction
+
+    // Final check to ensure size is correct after initialization.
+    requestAnimationFrame(() => {
+      if (cardMap) cardMap.invalidateSize();
+    });
+  } catch (error) {
+    console.error("Error initializing run card map:", error);
+  }
+}
+
+function destroyCardMaps() {
+  activeCardMaps.forEach((map) => {
+    if (map && map.remove) {
+      map.remove();
+    }
+  });
+  activeCardMaps = [];
+  mapRefs.value = {};
+}
+
+function createVisibleCardMaps() {
+  setTimeout(() => {
+    if (currentPage.value === "profile") {
+      displayedRuns.value.forEach((run) => {
+        if (run.route?.length > 0) {
+          const mapContainer = mapRefs.value["run-" + run.id];
+          if (mapContainer && !mapContainer._leaflet_id) {
+            initRunCardMap(mapContainer, run.route);
+          }
+        }
+      });
+    } else if (currentPage.value === "social") {
+      sortedFriends.value.forEach((friend) => {
+        if (friend.stats?.lastRun?.route?.length > 0) {
+          const mapContainer = mapRefs.value["friend-" + friend.uid];
+          if (mapContainer && !mapContainer._leaflet_id) {
+            initRunCardMap(mapContainer, friend.stats.lastRun.route);
+          }
+        }
+      });
+    }
+  }, 100); // A 100ms delay is usually plenty of time for the UI to settle.
+}
+
 /* Weather Methods */
 const openWeatherApiKey = ref("0eba5f215da947c9f966707b84cea466");
 
@@ -2886,8 +1190,7 @@ async function initMap() {
     return;
   }
 
-  const mapboxAccessToken =
-    "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA"; // <-- PASTE YOUR TOKEN HERE
+  const mapboxAccessToken = MAPBOX_ACCESS_TOKEN;
 
   try {
     console.log("Container found. Initializing map...");
@@ -2929,8 +1232,7 @@ async function initSummaryMap() {
     return;
   }
 
-  const mapboxAccessToken =
-    "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA"; // <-- PASTE YOUR TOKEN HERE
+  const mapboxAccessToken = MAPBOX_ACCESS_TOKEN;
 
   try {
     summaryMap = L.map(summaryMapContainer.value);
@@ -3607,6 +1909,7 @@ async function updateUserStatsInFirestore() {
               pace: lastRun.pace,
               date: lastRun.date,
               description: lastRun.description || "",
+              route: lastRun.route || null,
             }
           : null,
       },
@@ -3765,7 +2068,62 @@ async function updateUsername() {
   }
 }
 
-// --- ON MOUNTED ---
+async function handleGoogleSignIn() {
+  authMessage.value = "";
+  const provider = new GoogleAuthProvider();
+
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    // After successful sign-in, check if user exists in Firestore
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    // If the user is new, create a document for them
+    if (!userDoc.exists()) {
+      await setDoc(userDocRef, {
+        displayName: user.displayName,
+        displayName_lowercase: user.displayName.toLowerCase(),
+        email: user.email.toLowerCase(),
+        photoURL: user.photoURL, // Save their Google profile picture
+      });
+    }
+
+    // Reload the page to refresh the app state for the logged-in user
+    window.location.reload();
+  } catch (error) {
+    console.error("Google Sign-In Error:", error);
+    authMessage.value = `Error with Google Sign-In: ${error.message}`;
+  }
+}
+
+// --- NEW: Scroll handler for 3D card effect ---
+let scrollEl = null;
+const handleScroll = () => {
+  requestAnimationFrame(() => {
+    const cards = document.querySelectorAll(".styled-card");
+    const viewportHeight = window.innerHeight;
+
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect();
+      // Calculate the center of the card relative to the viewport
+      const cardCenterY = rect.top + rect.height / 2;
+      // Calculate the distance of the card's center from the viewport's center
+      const distanceFromCenter = cardCenterY - viewportHeight / 2;
+      // Create a rotation value based on the distance. The further away, the more it rotates.
+      // The division factor (e.g., 40) controls the intensity of the effect.
+      const rotation = distanceFromCenter / 40;
+
+      // Apply a subtle 3D rotation
+      card.style.transform = `perspective(800px) rotateX(${rotation}deg)`;
+    });
+  });
+};
+
+// --- LIFECYCLE HOOKS ---
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
     isLoading.value = true;
@@ -3780,6 +2138,13 @@ onMounted(() => {
       await fetchUserRuns(authUser.uid);
       await fetchUserShoes(authUser.uid);
       await setupSocialListeners();
+
+      // NEW: Set up scroll listener after user logs in
+      await nextTick();
+      if (contentRef.value) {
+        scrollEl = await contentRef.value.$el.getScrollElement();
+        scrollEl.addEventListener("scroll", handleScroll);
+      }
     } else {
       user.value = null;
       displayName.value = "";
@@ -3793,9 +2158,20 @@ onMounted(() => {
         friendsListenerUnsubscribe();
         friendsListenerUnsubscribe = null;
       }
+      // NEW: Clean up scroll listener on logout
+      if (scrollEl) {
+        scrollEl.removeEventListener("scroll", handleScroll);
+        scrollEl = null;
+      }
     }
     isLoading.value = false;
   });
+});
+
+onUnmounted(() => {
+  if (scrollEl) {
+    scrollEl.removeEventListener("scroll", handleScroll);
+  }
 });
 </script>
 
@@ -3813,7 +2189,7 @@ onMounted(() => {
     <!-- Main Content -->
     <template v-if="!isLoading">
       <ion-header class="ion-no-border">
-        <ion-toolbar color="#1e3a8a">
+        <ion-toolbar>
           <ion-title>RunItUp</ion-title>
           <ion-buttons slot="end">
             <ion-button
@@ -3826,7 +2202,8 @@ onMounted(() => {
         </ion-toolbar>
       </ion-header>
 
-      <ion-content :fullscreen="true">
+      <!-- MODIFIED: Added ref to IonContent -->
+      <ion-content :fullscreen="true" ref="contentRef">
         <img
           v-if="photoURL && currentPage === 'home'"
           :src="photoURL"
@@ -3938,7 +2315,7 @@ onMounted(() => {
                   Total: {{ weeklyTotalDistance.toFixed(2) }} mi
                 </p>
                 <div class="chart-container">
-                  <!-- Chart bars remain the same -->
+                  <!-- Chart Bars -->
                   <div
                     v-for="data in weeklyChartData"
                     :key="data.day"
@@ -3948,9 +2325,9 @@ onMounted(() => {
                       class="chart-bar"
                       :style="{ height: data.height + '%' }"
                     >
-                      <span class="bar-value">{{
-                        data.distance.toFixed(1)
-                      }}</span>
+                      <span v-if="data.distance > 0" class="bar-value">
+                        {{ data.distance.toFixed(1) }}
+                      </span>
                     </div>
                     <p class="chart-label">{{ data.day }}</p>
                   </div>
@@ -3960,14 +2337,13 @@ onMounted(() => {
           </div>
         </Transition>
 
-        <!-- Social Page (New Refined Card Layout) -->
+        <!-- Social Page -->
         <Transition name="fade">
           <div v-if="currentPage === 'social'" class="ion-padding">
             <ion-button
               expand="block"
               @click="openFollowModal"
-              class="ion-margin-bottom"
-              color="primary"
+              class="ion-margin-bottom yellow-button"
             >
               <ion-icon slot="start" :icon="people"></ion-icon>
               Follow a New User
@@ -3975,9 +2351,9 @@ onMounted(() => {
 
             <div v-if="friends.length > 0" class="friend-list">
               <div
-                v-for="friend in friends"
+                v-for="friend in sortedFriends"
                 :key="friend.uid"
-                class="friend-card-refined"
+                class="friend-card-refined styled-card"
               >
                 <!-- Card Header -->
                 <div class="friend-main-info">
@@ -4020,6 +2396,26 @@ onMounted(() => {
                 <!-- Latest Run -->
                 <div class="friend-latest-run">
                   <h3 class="section-title">Latest Run</h3>
+                  <p
+                    v-if="friend.stats?.lastRun?.date"
+                    class="latest-run-date-subtitle"
+                  >
+                    {{
+                      new Date(friend.stats.lastRun.date).toLocaleDateString(
+                        "en-US",
+                        { year: "numeric", month: "2-digit", day: "2-digit" }
+                      )
+                    }}
+                  </p>
+                  <!-- MAP CONTAINER-->
+                  <div
+                    v-if="
+                      friend.stats?.lastRun?.route &&
+                      friend.stats.lastRun.route.length > 0
+                    "
+                    :ref="(el) => setMapRef('friend-' + friend.uid, el)"
+                    class="run-card-map"
+                  ></div>
                   <p
                     v-if="
                       friend.stats &&
@@ -4147,7 +2543,7 @@ onMounted(() => {
                       <h2>{{ shoe.brandName }}</h2>
                       <p>{{ shoe.modelName }}</p>
                     </ion-label>
-                    <ion-note slot="end" color="primary"
+                    <ion-note slot="end" class="shoe-mileage-note"
                       >{{ shoe.totalDistance.toFixed(2) }} mi</ion-note
                     >
                   </ion-item>
@@ -4191,6 +2587,12 @@ onMounted(() => {
                     <p v-if="run.description" class="run-description">
                       "{{ run.description }}"
                     </p>
+                    <!-- MAP CONTAINER -->
+                    <div
+                      v-if="run.route && run.route.length > 0"
+                      :ref="(el) => setMapRef('run-' + run.id, el)"
+                      class="run-card-map"
+                    ></div>
                     <div class="run-history-stats">
                       <div>
                         <p class="stat-label">Distance</p>
@@ -4346,6 +2748,21 @@ onMounted(() => {
                 {{ authView === "signin" ? "Sign In" : "Create Account" }}
               </ion-button>
 
+              <!-- GOOGLE SIGN-IN BUTTON -->
+              <div class="auth-separator">
+                <span>OR</span>
+              </div>
+
+              <ion-button
+                expand="block"
+                @click="handleGoogleSignIn"
+                color="light"
+                class="ion-margin-top"
+              >
+                <ion-icon slot="start" src="/assets/google-icon.svg"></ion-icon>
+                Sign In with Google
+              </ion-button>
+
               <div class="auth-toggle">
                 <p v-if="authView === 'signin'">
                   Don't have an account?
@@ -4407,7 +2824,7 @@ onMounted(() => {
         @didDismiss="isUserProfileModalVisible = false"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title v-if="selectedFriendProfile"
               >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
             >
@@ -4536,7 +2953,7 @@ onMounted(() => {
         class="summary-modal"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Run Complete!</ion-title>
             <ion-button
               slot="end"
@@ -4650,7 +3067,7 @@ onMounted(() => {
         @ionModalDidDismiss="destroyMap"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Live Run</ion-title>
             <ion-button
               slot="end"
@@ -4720,7 +3137,7 @@ onMounted(() => {
       <!-- Log Run Modal -->
       <ion-modal :is-open="isLogRunModalVisible">
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Log a Past Run</ion-title>
             <ion-button
               slot="end"
@@ -4807,7 +3224,7 @@ onMounted(() => {
       <!-- Profile Settings Dropdown -->
       <ion-modal :is-open="isEditProfileModalVisible">
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Edit Profile</ion-title>
             <ion-buttons slot="end">
               <ion-button @click="isEditProfileModalVisible = false">
@@ -4863,7 +3280,7 @@ onMounted(() => {
       <!-- Add Shoe Modal -->
       <ion-modal :is-open="isAddShoeModalVisible">
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Add a New Shoe</ion-title>
             <ion-buttons slot="end">
               <ion-button @click="isAddShoeModalVisible = false">
@@ -4909,7 +3326,7 @@ onMounted(() => {
         class="summary-modal"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Shoe Details</ion-title>
             <ion-button
               slot="end"
@@ -4971,7 +3388,123 @@ onMounted(() => {
   </ion-app>
 </template>
 
+<style>
+/* --- NEW: Animated Gradient Background --- */
+/* This style block is NOT scoped to affect the entire app background */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+</style>
+
 <style scoped>
+/* --- NEW: 3D Glassmorphism Styles --- */
+ion-header.ion-no-border ion-toolbar {
+  --background: transparent;
+}
+
+ion-content {
+  --background: none;
+  background: linear-gradient(-45deg, #1e3a8a, #0c1a4b, #2a4a9c, #1a2a6c);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+.styled-card {
+  /* Enhanced Glass Effect */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0)
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px; /* More rounded for a 'liquid' feel */
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  /* 3D Depth & Lighting */
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  /* The transform is now handled by JS for a dynamic effect */
+  transition: transform 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.yellow-button {
+  --background: #fbbf24;
+  --background-activated: #f59e0b;
+  --color: #1a202c;
+  --box-shadow: 0 4px 15px -5px rgba(251, 191, 36, 0.6);
+  --border-radius: 12px;
+  font-weight: 700;
+  transform: translateY(0);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* MODIFIED: Gives buttons a 'pressed' feel on tap */
+.yellow-button:active {
+  transform: translateY(2px);
+  --box-shadow: 0 2px 10px -5px rgba(251, 191, 36, 0.8);
+}
+
+.footer-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 75px;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.footer-tabs button {
+  background: none;
+  border: none;
+  color: #bbb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  transition: color 0.2s;
+  position: relative;
+}
+
+/* MODIFIED: Active tab glow effect */
+.footer-tabs button.active {
+  color: #fbbf24;
+  text-shadow: 0 0 10px #fbbf24;
+}
+
+/* NEW: Bounce animation for the active icon */
+.footer-tabs button.active ion-icon {
+  animation: bounce 0.5s;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* --- Existing & Tweaked Styles --- */
+
 .run-action-card {
   padding: 8px;
 }
@@ -5057,52 +3590,33 @@ onMounted(() => {
   width: 70%;
   background-color: var(--ion-color-primary);
   border-radius: 4px 4px 0 0;
-  transition: height 0.5s ease-out;
+  transition: height 0.5s ease-out; /* NEW: Added transition for smooth animation */
   position: relative;
   min-height: 2px; /* Show a sliver for 0-distance days */
 }
 .bar-value {
   position: absolute;
-  top: -20px;
+  top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: white;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.3s;
-  background-color: rgba(0, 0, 0, 0.5);
   padding: 2px 4px;
   border-radius: 3px;
 }
-.chart-bar:hover .bar-value {
-  opacity: 1;
-}
+
 .chart-label {
   margin-top: 8px;
   font-size: 0.8rem;
   color: var(--ion-color-medium);
 }
 
-ion-header ion-toolbar {
-  --background: #1e3a8a;
-}
-ion-content {
-  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
-}
-
 .welcome-text {
   font-size: 1.2rem;
   font-weight: 600;
   color: #fff;
-}
-.styled-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 1.5rem;
 }
 .styled-card ion-card-title {
   font-weight: 700;
@@ -5120,12 +3634,6 @@ ion-content {
   color: #fff;
   margin-bottom: 8px;
   --padding-start: 16px;
-}
-.yellow-button {
-  --background: #fbbf24;
-  --background-activated: #f59e0b;
-  --color: #1a202c;
-  font-weight: 700;
 }
 .stat-item {
   margin-bottom: 1rem;
@@ -5169,40 +3677,7 @@ ion-content {
 .level-emoji {
   font-size: 1.5rem;
 }
-.xp-text {
-  font-size: 0.8rem;
-  color: #d1d5db;
-  margin-top: 0.5rem;
-}
-.footer-tabs {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 75px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.footer-tabs button {
-  background: none;
-  border: none;
-  color: #bbb;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 12px;
-  transition: color 0.2s;
-}
-.footer-tabs button.active {
-  color: #fbbf24;
-}
+
 .footer-tabs ion-icon {
   font-size: 26px;
   margin-bottom: 2px;
@@ -5211,7 +3686,7 @@ ion-content {
   --padding-bottom: 80px;
 }
 .auth-modal ion-content {
-  --background: #1e3a8a;
+  --background: transparent;
 }
 .auth-modal .input-group {
   display: flex;
@@ -5245,6 +3720,7 @@ ion-content {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 .run-history-item:last-child {
   border-bottom: none;
@@ -5439,11 +3915,7 @@ ion-spinner {
 }
 
 .friend-card-refined {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* This class now inherits from .styled-card */
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -5553,7 +4025,7 @@ ion-progress-bar {
 }
 
 .summary-modal ion-content {
-  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
+  --background: transparent;
 }
 
 .summary-logo-icon {
@@ -5608,7 +4080,6 @@ ion-progress-bar {
 }
 
 .auth-modal ion-content {
-  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5856,6 +4327,12 @@ ion-progress-bar {
   color: #d1d5db;
 }
 
+.shoe-mileage-note {
+  color: white;
+  font-size: 1.1rem; /* Bigger font size */
+  font-weight: 600; /* Bolder text for readability */
+}
+
 /* Run Description Styles */
 .run-description {
   font-style: italic;
@@ -5900,6 +4377,75 @@ ion-progress-bar {
   font-size: 1.1rem;
   font-weight: 600;
   color: #ffffff;
+}
+
+/* Section Title Styles */
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d1d5db;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 0.25rem; /* Change this line */
+  text-align: center;
+}
+
+.latest-run-date-subtitle {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fbbf24; /* The requested yellow color */
+  margin-top: 0; /* Remove default paragraph margin */
+  margin-bottom: 0.75rem; /* Add space below the date */
+}
+
+/* Run Card Map Styles */
+.run-card-map {
+  height: 150px;
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  background-color: #3a4b7a;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Auth Separator Styles */
+.auth-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #d1d5db;
+  margin: 1.5rem 0;
+}
+.auth-separator::before,
+.auth-separator::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+.auth-separator:not(:empty)::before {
+  margin-right: 0.5em;
+}
+.auth-separator:not(:empty)::after {
+  margin-left: 0.5em;
+}
+
+ion-header ion-toolbar {
+  --background: #1e3a8a;
+}
+
+/* Override header for the new style */
+ion-header.ion-no-border {
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+ion-header.ion-no-border::after {
+  display: none;
+}
+ion-header.ion-no-border ion-toolbar {
+  --background: transparent;
+  --border-width: 0;
 }
 </style>
 </file>

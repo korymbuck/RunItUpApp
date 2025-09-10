@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue"; // NEW: Added onUnmounted
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import {
   IonApp,
   IonHeader,
@@ -92,7 +92,37 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { storage } from "./firebase-config.js";
 
-// --- NEW: Ref for IonContent to attach scroll listener ---
+// --- NEW: Input Validation and Sanitization Utilities ---
+const validators = {
+  isValidEmail: (email) => {
+    const re =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+  },
+  isStrongPassword: (password) => {
+    // Minimum 8 characters, at least one letter and one number
+    const re = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    return re.test(password);
+  },
+  sanitizeInput: (input) => {
+    const div = document.createElement("div");
+    div.textContent = input;
+    return div.innerHTML;
+  },
+};
+
+// --- Helper to display toasts ---
+async function presentToast(message, color = "warning") {
+  const toast = await toastController.create({
+    message,
+    duration: 3000,
+    color,
+    position: "top",
+  });
+  await toast.present();
+}
+
+// --- Ref for IonContent to attach scroll listener ---
 const contentRef = ref(null);
 
 // --- STATE ---
@@ -521,12 +551,7 @@ async function openUserProfileModal(friend) {
     }
   } catch (error) {
     console.error("Error fetching friend's runs:", error);
-    const toast = await toastController.create({
-      message: "Could not load runs for this user.",
-      duration: 3000,
-      color: "danger",
-    });
-    await toast.present();
+    await presentToast("Could not load runs for this user.", "danger");
   } finally {
     isFetchingFriendRuns.value = false;
   }
@@ -766,21 +791,25 @@ async function fetchUserShoes(userId) {
 }
 
 async function addShoe() {
-  if (!newShoeBrand.value.trim() || !newShoeModel.value.trim()) {
-    const toast = await toastController.create({
-      message: "Please enter both a brand and a model.",
-      duration: 2000,
-      color: "warning",
-    });
-    await toast.present();
-    return;
+  const brand = newShoeBrand.value.trim();
+  const model = newShoeModel.value.trim();
+
+  // --- VALIDATION START ---
+  if (!brand || !model) {
+    return presentToast("Please enter both a brand and a model.");
   }
+  if (brand.length > 50 || model.length > 50) {
+    return presentToast("Brand and model names must be under 50 characters.");
+  }
+  const sanitizedBrand = validators.sanitizeInput(brand);
+  const sanitizedModel = validators.sanitizeInput(model);
+  // --- VALIDATION END ---
 
   try {
     await addDoc(collection(db, "shoes"), {
       userId: user.value.uid,
-      brandName: newShoeBrand.value.trim(),
-      modelName: newShoeModel.value.trim(),
+      brandName: sanitizedBrand,
+      modelName: sanitizedModel,
       totalDistance: 0,
       totalTime: 0,
       runCount: 0,
@@ -789,14 +818,10 @@ async function addShoe() {
     isAddShoeModalVisible.value = false;
     newShoeBrand.value = "";
     newShoeModel.value = "";
+    await presentToast("Shoe added successfully!", "success");
   } catch (error) {
     console.error("Error adding shoe:", error);
-    const toast = await toastController.create({
-      message: "Could not add shoe. Please try again.",
-      duration: 3000,
-      color: "danger",
-    });
-    await toast.present();
+    await presentToast("Could not add shoe. Please try again.", "danger");
   }
 }
 
@@ -810,13 +835,7 @@ async function addShoeToPastRun(run, shoeId) {
     const shoeInfo = userShoes.value.find((s) => s.id === shoeId);
     if (!shoeInfo) {
       console.error("Selected shoe not found in local state.");
-      const toast = await toastController.create({
-        message: "Error: Selected shoe could not be found.",
-        duration: 3000,
-        color: "danger",
-      });
-      await toast.present();
-      return;
+      return presentToast("Error: Selected shoe could not be found.", "danger");
     }
 
     // 1. Update the run document to link the shoe
@@ -836,20 +855,13 @@ async function addShoeToPastRun(run, shoeId) {
     await fetchUserRuns(user.value.uid);
     await fetchUserShoes(user.value.uid);
 
-    const toast = await toastController.create({
-      message: "Shoe added to your run!",
-      duration: 2000,
-      color: "success",
-    });
-    await toast.present();
+    await presentToast("Shoe added to your run!", "success");
   } catch (error) {
     console.error("Error adding shoe to past run:", error);
-    const toast = await toastController.create({
-      message: "Failed to add shoe to the run. Please try again.",
-      duration: 3000,
-      color: "danger",
-    });
-    await toast.present();
+    await presentToast(
+      "Failed to add shoe to the run. Please try again.",
+      "danger"
+    );
   }
 }
 
@@ -892,20 +904,10 @@ async function updateRunAndShoeStats(runId, runData, shoeId) {
     // 3. Refresh local shoe data to reflect changes immediately on the profile page
     await fetchUserShoes(user.value.uid);
 
-    const toast = await toastController.create({
-      message: "Run logged to your shoe!",
-      duration: 2000,
-      color: "success",
-    });
-    await toast.present();
+    await presentToast("Run logged to your shoe!", "success");
   } catch (error) {
     console.error("Error updating run and shoe stats:", error);
-    const toast = await toastController.create({
-      message: "Failed to log run to shoe.",
-      duration: 3000,
-      color: "danger",
-    });
-    await toast.present();
+    await presentToast("Failed to log run to shoe.", "danger");
   }
 }
 
@@ -913,12 +915,23 @@ async function updateRunAndShoeStats(runId, runData, shoeId) {
 async function handleSummaryModalDismiss() {
   const runId = lastRunSummary.value?.id;
   const shoeId = selectedShoeForRun.value;
-  const description = runSummaryDescription.value.trim();
+  let description = runSummaryDescription.value.trim();
 
   // Save shoe info if selected
   if (shoeId && runId) {
     await updateRunAndShoeStats(runId, lastRunSummary.value, shoeId);
   }
+
+  // --- VALIDATION & SANITIZATION for description ---
+  if (description) {
+    if (description.length > 500) {
+      await presentToast("Description must be under 500 characters.");
+      // Don't close the modal if validation fails
+      return;
+    }
+    description = validators.sanitizeInput(description);
+  }
+  // --- END VALIDATION ---
 
   // Save description if entered
   if (description && runId) {
@@ -935,24 +948,14 @@ async function handleSummaryModalDismiss() {
           await updateUserStatsInFirestore();
         }
       }
-      const toast = await toastController.create({
-        message: "Description saved!",
-        duration: 2000,
-        color: "success",
-      });
-      await toast.present();
+      await presentToast("Description saved!", "success");
     } catch (error) {
       console.error("Error saving run description:", error);
-      const toast = await toastController.create({
-        message: "Could not save description.",
-        duration: 3000,
-        color: "danger",
-      });
-      await toast.present();
+      await presentToast("Could not save description.", "danger");
     }
   }
 
-  // Reset state
+  // Reset state and close modal
   isSummaryModalVisible.value = false;
   selectedShoeForRun.value = null;
   runSummaryDescription.value = "";
@@ -1067,14 +1070,7 @@ async function stopWorkout() {
       isSummaryModalVisible.value = true;
     } catch (error) {
       console.error("Error saving run:", error);
-      // Create and present the toast on error
-      const toast = await toastController.create({
-        message: "There was an error saving your run.",
-        duration: 3000,
-        color: "danger",
-        position: "top",
-      });
-      await toast.present();
+      await presentToast("There was an error saving your run.", "danger");
     }
   }
   currentDistance.value = 0;
@@ -1084,51 +1080,64 @@ async function stopWorkout() {
 }
 
 async function logRun() {
-  if (navigator.vibrate) {
-    navigator.vibrate(50);
-  }
-  if (!user.value) {
-    alert("Please log in.");
-    return;
-  }
+  if (navigator.vibrate) navigator.vibrate(50);
+  if (!user.value) return presentToast("Please log in.", "danger");
+
+  // --- VALIDATION START ---
   const dist = parseFloat(distanceInput.value);
   const timeInSeconds =
     (parseInt(hoursInput.value) || 0) * 3600 +
     (parseInt(minutesInput.value) || 0) * 60 +
     (parseInt(secondsInput.value) || 0);
-  if (dist > 0 && timeInSeconds > 0) {
-    const newRunData = {
-      userId: user.value.uid,
-      date: new Date().toISOString(),
-      distance: dist,
-      time: timeInSeconds,
-      pace: timeInSeconds / dist,
-      timestamp: new Date(),
-      description: logRunDescription.value.trim() || "",
-    };
-    try {
-      const docRef = await addDoc(collection(db, "runs"), newRunData);
+  let description = logRunDescription.value.trim();
 
-      if (selectedShoeForRun.value) {
-        await updateRunAndShoeStats(
-          docRef.id,
-          newRunData,
-          selectedShoeForRun.value
-        );
-      }
-      await fetchUserRuns(user.value.uid); // This also triggers recalculateStats and updateUserStats
-
-      distanceInput.value = null;
-      hoursInput.value = null;
-      minutesInput.value = null;
-      secondsInput.value = null;
-      logRunDescription.value = "";
-    } catch (error) {
-      console.error("Error logging run:", error);
-      alert("There was an error logging your run.");
+  if (isNaN(dist) || dist <= 0 || dist > 200) {
+    return presentToast("Please enter a valid distance (0-200 miles).");
+  }
+  if (isNaN(timeInSeconds) || timeInSeconds <= 0 || timeInSeconds > 86400) {
+    return presentToast("Please enter a valid time (up to 24 hours).");
+  }
+  if (description) {
+    if (description.length > 500) {
+      return presentToast("Description must be under 500 characters.");
     }
-  } else {
-    alert("Please enter a valid distance and time.");
+    description = validators.sanitizeInput(description);
+  }
+  // --- VALIDATION END ---
+
+  const newRunData = {
+    userId: user.value.uid,
+    date: new Date().toISOString(),
+    distance: dist,
+    time: timeInSeconds,
+    pace: timeInSeconds / dist,
+    timestamp: new Date(),
+    description: description,
+  };
+  try {
+    const docRef = await addDoc(collection(db, "runs"), newRunData);
+
+    if (selectedShoeForRun.value) {
+      await updateRunAndShoeStats(
+        docRef.id,
+        newRunData,
+        selectedShoeForRun.value
+      );
+    }
+    await fetchUserRuns(user.value.uid);
+
+    // Clear inputs on success
+    distanceInput.value = null;
+    hoursInput.value = null;
+    minutesInput.value = null;
+    secondsInput.value = null;
+    logRunDescription.value = "";
+    selectedShoeForRun.value = null;
+    isLogRunModalVisible.value = false;
+    await presentToast("Run logged successfully!", "success");
+  } catch (error) {
+    console.error("Error logging run:", error);
+    await presentToast("There was an error logging your run.", "danger");
   }
 }
 
@@ -1168,25 +1177,16 @@ async function deleteRun(index) {
               await fetchUserRuns(user.value.uid); // Recalculates user's total stats.
               await fetchUserShoes(user.value.uid); // Refreshes shoe list with updated mileage.
 
-              const toast = await toastController.create({
-                message: "Run deleted successfully.",
-                duration: 2000,
-                color: "success",
-                position: "top",
-              });
-              await toast.present();
+              await presentToast("Run deleted successfully.", "success");
             } catch (error) {
               console.error(
                 "Error deleting run and updating shoe stats:",
                 error
               );
-              const toast = await toastController.create({
-                message: "Failed to delete run. Please try again.",
-                duration: 3000,
-                color: "danger",
-                position: "top",
-              });
-              await toast.present();
+              await presentToast(
+                "Failed to delete run. Please try again.",
+                "danger"
+              );
             }
           }
         },
@@ -1249,9 +1249,17 @@ function cancelHoldStop() {
 // --- FIREBASE METHODS --
 async function handleSignIn() {
   authMessage.value = "";
+  // --- VALIDATION START ---
+  if (!validators.isValidEmail(email.value)) {
+    return (authMessage.value = "Please enter a valid email address.");
+  }
+  if (!password.value) {
+    return (authMessage.value = "Please enter your password.");
+  }
+  // --- VALIDATION END ---
+
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    // Reload the page to refresh the app state
     window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing in: ${error.message}`;
@@ -1260,10 +1268,32 @@ async function handleSignIn() {
 
 async function handleSignUp() {
   authMessage.value = "";
-  if (!displayName.value || !email.value || !password.value) {
-    authMessage.value = "Please fill out all fields.";
-    return;
+
+  // --- VALIDATION START ---
+  const sanitizedDisplayName = validators.sanitizeInput(
+    displayName.value.trim()
+  );
+
+  if (!sanitizedDisplayName || !email.value || !password.value) {
+    return (authMessage.value = "Please fill out all fields.");
   }
+  if (sanitizedDisplayName.length < 3 || sanitizedDisplayName.length > 20) {
+    return (authMessage.value =
+      "Username must be between 3 and 20 characters.");
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(sanitizedDisplayName)) {
+    return (authMessage.value =
+      "Username can only contain letters, numbers, and underscores.");
+  }
+  if (!validators.isValidEmail(email.value)) {
+    return (authMessage.value = "Please enter a valid email address.");
+  }
+  if (!validators.isStrongPassword(password.value)) {
+    return (authMessage.value =
+      "Password must be at least 8 characters long and contain one letter and one number.");
+  }
+  // --- VALIDATION END ---
+
   try {
     const userCredential = await createUserWithEmailAndPassword(
       auth,
@@ -1272,8 +1302,8 @@ async function handleSignUp() {
     );
     const newUser = userCredential.user;
     await setDoc(doc(db, "users", newUser.uid), {
-      displayName: displayName.value,
-      displayName_lowercase: displayName.value.toLowerCase(),
+      displayName: sanitizedDisplayName, // Use sanitized version
+      displayName_lowercase: sanitizedDisplayName.toLowerCase(),
       email: email.value.toLowerCase(),
     });
 
@@ -1293,13 +1323,7 @@ async function handleSignOut() {
 
 async function addFriend() {
   if (!friendUsername.value) {
-    const toast = await toastController.create({
-      message: "Please enter a username.",
-      duration: 2000,
-      color: "warning",
-    });
-    await toast.present();
-    return;
+    return presentToast("Please enter a username.");
   }
   const q = query(
     collection(db, "users"),
@@ -1307,51 +1331,45 @@ async function addFriend() {
   );
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
-    const toast = await toastController.create({
-      message: "User not found.",
-      duration: 2000,
-      color: "danger",
-    });
-    await toast.present();
-    return;
+    return presentToast("User not found.", "danger");
   }
   const friendDoc = querySnapshot.docs[0];
   const friendUid = friendDoc.id;
   const friendData = friendDoc.data();
   if (friendUid === user.value.uid) {
-    const toast = await toastController.create({
-      message: "You can't follow yourself.",
-      duration: 2000,
-      color: "warning",
-    });
-    await toast.present();
-    return;
+    return presentToast("You can't follow yourself.");
   }
   await setDoc(doc(db, `users/${user.value.uid}/friends`, friendUid), {
     displayName: friendData.displayName,
     followedAt: new Date(),
   });
 
-  const toast = await toastController.create({
-    message: `You are now following ${friendData.displayName}!`,
-    duration: 2000,
-    color: "success",
-  });
-  await toast.present();
+  await presentToast(
+    `You are now following ${friendData.displayName}!`,
+    "success"
+  );
 
   closeFollowModal();
 }
 
 async function unfollowUser(friendToUnfollow) {
-  if (
-    !confirm(
-      `Are you sure you want to unfollow ${friendToUnfollow.displayName}?`
-    )
-  )
-    return;
-  await deleteDoc(
-    doc(db, `users/${user.value.uid}/friends`, friendToUnfollow.uid)
-  );
+  const alert = await alertController.create({
+    header: "Unfollow User",
+    message: `Are you sure you want to unfollow ${friendToUnfollow.displayName}?`,
+    buttons: [
+      { text: "Cancel", role: "cancel" },
+      {
+        text: "Unfollow",
+        role: "destructive",
+        handler: async () => {
+          await deleteDoc(
+            doc(db, `users/${user.value.uid}/friends`, friendToUnfollow.uid)
+          );
+        },
+      },
+    ],
+  });
+  await alert.present();
 }
 
 async function fetchUserRuns(userId) {
@@ -1473,75 +1491,87 @@ function triggerFileUpload() {
   fileInput.value.click();
 }
 
-// Replace the old handlePictureUpload with this one
 async function handlePictureUpload(event) {
   const file = event.target.files[0];
   if (!file || !user.value) return;
+
+  // --- VALIDATION START ---
+  const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+  if (!allowedTypes.includes(file.type)) {
+    return presentToast("Invalid file type. Please upload a JPG, PNG, or GIF.");
+  }
+  const maxSizeInMB = 5;
+  if (file.size > maxSizeInMB * 1024 * 1024) {
+    return presentToast(`File is too large. Maximum size is ${maxSizeInMB}MB.`);
+  }
+  // --- VALIDATION END ---
 
   const filePath = `profile-pictures/${user.value.uid}`;
   const fileRef = storageRef(storage, filePath);
 
   try {
-    // Upload the file to Firebase Storage
     await uploadBytes(fileRef, file);
-
-    // Get the public URL for the image
     const url = await getDownloadURL(fileRef);
-
-    // Save that URL to the user's profile in Firestore
     await setDoc(
       doc(db, "users", user.value.uid),
       { photoURL: url },
       { merge: true }
     );
-
-    // Update the picture in the app instantly
     photoURL.value = url;
-    alert("Profile picture updated!");
+    await presentToast("Profile picture updated!", "success");
   } catch (error) {
     console.error("Error uploading picture:", error);
-    alert("Failed to upload picture.");
+    await presentToast("Failed to upload picture.", "danger");
   }
 }
 
-// Replace the old updateUsername with this one
 async function updateUsername() {
   const newName = newDisplayName.value.trim();
-  if (!newName || newName === displayName.value) {
-    return; // Do nothing if name is empty or unchanged
+  // --- VALIDATION START ---
+  if (!newName) return;
+  if (newName === displayName.value) return;
+  if (newName.length < 3 || newName.length > 20) {
+    return presentToast("Username must be between 3 and 20 characters.");
   }
+  if (!/^[a-zA-Z0-9_]+$/.test(newName)) {
+    return presentToast(
+      "Username can only contain letters, numbers, and underscores."
+    );
+  }
+  const sanitizedName = validators.sanitizeInput(newName);
+  // --- VALIDATION END ---
 
-  // Check if the new username is already taken by another user
   const usersRef = collection(db, "users");
   const q = query(
     usersRef,
-    where("displayName_lowercase", "==", newName.toLowerCase())
+    where("displayName_lowercase", "==", sanitizedName.toLowerCase())
   );
   const querySnapshot = await getDocs(q);
 
   if (!querySnapshot.empty) {
-    alert("This username is already taken. Please choose another.");
-    return;
+    return presentToast(
+      "This username is already taken. Please choose another."
+    );
   }
 
-  // If it's unique, update the document
   try {
     const userDocRef = doc(db, "users", user.value.uid);
     await setDoc(
       userDocRef,
       {
-        displayName: newName,
-        displayName_lowercase: newName.toLowerCase(),
+        displayName: sanitizedName,
+        displayName_lowercase: sanitizedName.toLowerCase(),
       },
       { merge: true }
     );
 
-    displayName.value = newName; // Update the name in the app
-    newDisplayName.value = ""; // Clear the input field
-    alert("Username updated successfully!");
+    displayName.value = sanitizedName;
+    newDisplayName.value = "";
+    isEditProfileModalVisible.value = false;
+    await presentToast("Username updated successfully!", "success");
   } catch (error) {
     console.error("Error updating username:", error);
-    alert("Failed to update username.");
+    await presentToast("Failed to update username.", "danger");
   }
 }
 
@@ -1555,21 +1585,18 @@ async function handleGoogleSignIn() {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
-    // After successful sign-in, check if user exists in Firestore
     const userDocRef = doc(db, "users", user.uid);
     const userDoc = await getDoc(userDocRef);
 
-    // If the user is new, create a document for them
     if (!userDoc.exists()) {
       await setDoc(userDocRef, {
         displayName: user.displayName,
         displayName_lowercase: user.displayName.toLowerCase(),
         email: user.email.toLowerCase(),
-        photoURL: user.photoURL, // Save their Google profile picture
+        photoURL: user.photoURL,
       });
     }
 
-    // Reload the page to refresh the app state for the logged-in user
     window.location.reload();
   } catch (error) {
     console.error("Google Sign-In Error:", error);
@@ -1577,7 +1604,7 @@ async function handleGoogleSignIn() {
   }
 }
 
-// --- NEW: Scroll handler for 3D card effect ---
+// --- Scroll handler for 3D card effect ---
 let scrollEl = null;
 const handleScroll = () => {
   requestAnimationFrame(() => {
@@ -1586,15 +1613,10 @@ const handleScroll = () => {
 
     cards.forEach((card) => {
       const rect = card.getBoundingClientRect();
-      // Calculate the center of the card relative to the viewport
       const cardCenterY = rect.top + rect.height / 2;
-      // Calculate the distance of the card's center from the viewport's center
       const distanceFromCenter = cardCenterY - viewportHeight / 2;
-      // Create a rotation value based on the distance. The further away, the more it rotates.
-      // The division factor (e.g., 40) controls the intensity of the effect.
       const rotation = distanceFromCenter / 40;
 
-      // Apply a subtle 3D rotation
       card.style.transform = `perspective(800px) rotateX(${rotation}deg)`;
     });
   });
@@ -1616,7 +1638,6 @@ onMounted(() => {
       await fetchUserShoes(authUser.uid);
       await setupSocialListeners();
 
-      // NEW: Set up scroll listener after user logs in
       await nextTick();
       if (contentRef.value) {
         scrollEl = await contentRef.value.$el.getScrollElement();
@@ -1635,7 +1656,6 @@ onMounted(() => {
         friendsListenerUnsubscribe();
         friendsListenerUnsubscribe = null;
       }
-      // NEW: Clean up scroll listener on logout
       if (scrollEl) {
         scrollEl.removeEventListener("scroll", handleScroll);
         scrollEl = null;
