@@ -1976,7 +1976,7 @@ onMounted(() => {
                       <h2>{{ shoe.brandName }}</h2>
                       <p>{{ shoe.modelName }}</p>
                     </ion-label>
-                    <ion-note slot="end" color="primary"
+                    <ion-note slot="end" class="shoe-mileage-note"
                       >{{ shoe.totalDistance.toFixed(2) }} mi</ion-note
                     >
                   </ion-item>
@@ -3701,6 +3701,12 @@ ion-progress-bar {
   --padding-top: 4px; /* Match vertical padding of the pill */
   --padding-bottom: 4px; /* Match vertical padding of the pill */
   color: #d1d5db;
+}
+
+.shoe-mileage-note {
+  color: white;
+  font-size: 1.1rem; /* Bigger font size */
+  font-weight: 600; /* Bolder text for readability */
 }
 
 /* Run Description Styles */
