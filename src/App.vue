@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue"; // NEW: Added onUnmounted
 import {
   IonApp,
   IonHeader,
@@ -91,6 +91,9 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { storage } from "./firebase-config.js";
+
+// --- NEW: Ref for IonContent to attach scroll listener ---
+const contentRef = ref(null);
 
 // --- STATE ---
 const isLoading = ref(true);
@@ -1574,7 +1577,30 @@ async function handleGoogleSignIn() {
   }
 }
 
-// --- ON MOUNTED ---
+// --- NEW: Scroll handler for 3D card effect ---
+let scrollEl = null;
+const handleScroll = () => {
+  requestAnimationFrame(() => {
+    const cards = document.querySelectorAll(".styled-card");
+    const viewportHeight = window.innerHeight;
+
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect();
+      // Calculate the center of the card relative to the viewport
+      const cardCenterY = rect.top + rect.height / 2;
+      // Calculate the distance of the card's center from the viewport's center
+      const distanceFromCenter = cardCenterY - viewportHeight / 2;
+      // Create a rotation value based on the distance. The further away, the more it rotates.
+      // The division factor (e.g., 40) controls the intensity of the effect.
+      const rotation = distanceFromCenter / 40;
+
+      // Apply a subtle 3D rotation
+      card.style.transform = `perspective(800px) rotateX(${rotation}deg)`;
+    });
+  });
+};
+
+// --- LIFECYCLE HOOKS ---
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
     isLoading.value = true;
@@ -1589,6 +1615,13 @@ onMounted(() => {
       await fetchUserRuns(authUser.uid);
       await fetchUserShoes(authUser.uid);
       await setupSocialListeners();
+
+      // NEW: Set up scroll listener after user logs in
+      await nextTick();
+      if (contentRef.value) {
+        scrollEl = await contentRef.value.$el.getScrollElement();
+        scrollEl.addEventListener("scroll", handleScroll);
+      }
     } else {
       user.value = null;
       displayName.value = "";
@@ -1602,9 +1635,20 @@ onMounted(() => {
         friendsListenerUnsubscribe();
         friendsListenerUnsubscribe = null;
       }
+      // NEW: Clean up scroll listener on logout
+      if (scrollEl) {
+        scrollEl.removeEventListener("scroll", handleScroll);
+        scrollEl = null;
+      }
     }
     isLoading.value = false;
   });
+});
+
+onUnmounted(() => {
+  if (scrollEl) {
+    scrollEl.removeEventListener("scroll", handleScroll);
+  }
 });
 </script>
 
@@ -1622,7 +1666,7 @@ onMounted(() => {
     <!-- Main Content -->
     <template v-if="!isLoading">
       <ion-header class="ion-no-border">
-        <ion-toolbar color="#1e3a8a">
+        <ion-toolbar>
           <ion-title>RunItUp</ion-title>
           <ion-buttons slot="end">
             <ion-button
@@ -1635,7 +1679,8 @@ onMounted(() => {
         </ion-toolbar>
       </ion-header>
 
-      <ion-content :fullscreen="true">
+      <!-- MODIFIED: Added ref to IonContent -->
+      <ion-content :fullscreen="true" ref="contentRef">
         <img
           v-if="photoURL && currentPage === 'home'"
           :src="photoURL"
@@ -1775,8 +1820,7 @@ onMounted(() => {
             <ion-button
               expand="block"
               @click="openFollowModal"
-              class="ion-margin-bottom"
-              color="primary"
+              class="ion-margin-bottom yellow-button"
             >
               <ion-icon slot="start" :icon="people"></ion-icon>
               Follow a New User
@@ -1786,7 +1830,7 @@ onMounted(() => {
               <div
                 v-for="friend in sortedFriends"
                 :key="friend.uid"
-                class="friend-card-refined"
+                class="friend-card-refined styled-card"
               >
                 <!-- Card Header -->
                 <div class="friend-main-info">
@@ -2257,7 +2301,7 @@ onMounted(() => {
         @didDismiss="isUserProfileModalVisible = false"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title v-if="selectedFriendProfile"
               >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
             >
@@ -2386,7 +2430,7 @@ onMounted(() => {
         class="summary-modal"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Run Complete!</ion-title>
             <ion-button
               slot="end"
@@ -2500,7 +2544,7 @@ onMounted(() => {
         @ionModalDidDismiss="destroyMap"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Live Run</ion-title>
             <ion-button
               slot="end"
@@ -2570,7 +2614,7 @@ onMounted(() => {
       <!-- Log Run Modal -->
       <ion-modal :is-open="isLogRunModalVisible">
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Log a Past Run</ion-title>
             <ion-button
               slot="end"
@@ -2657,7 +2701,7 @@ onMounted(() => {
       <!-- Profile Settings Dropdown -->
       <ion-modal :is-open="isEditProfileModalVisible">
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Edit Profile</ion-title>
             <ion-buttons slot="end">
               <ion-button @click="isEditProfileModalVisible = false">
@@ -2713,7 +2757,7 @@ onMounted(() => {
       <!-- Add Shoe Modal -->
       <ion-modal :is-open="isAddShoeModalVisible">
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Add a New Shoe</ion-title>
             <ion-buttons slot="end">
               <ion-button @click="isAddShoeModalVisible = false">
@@ -2759,7 +2803,7 @@ onMounted(() => {
         class="summary-modal"
       >
         <ion-header>
-          <ion-toolbar color="#1e3a8a">
+          <ion-toolbar>
             <ion-title>Shoe Details</ion-title>
             <ion-button
               slot="end"
@@ -2821,7 +2865,123 @@ onMounted(() => {
   </ion-app>
 </template>
 
+<style>
+/* --- NEW: Animated Gradient Background --- */
+/* This style block is NOT scoped to affect the entire app background */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+</style>
+
 <style scoped>
+/* --- NEW: 3D Glassmorphism Styles --- */
+ion-header.ion-no-border ion-toolbar {
+  --background: transparent;
+}
+
+ion-content {
+  --background: none;
+  background: linear-gradient(-45deg, #1e3a8a, #0c1a4b, #2a4a9c, #1a2a6c);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+.styled-card {
+  /* Enhanced Glass Effect */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0)
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px; /* More rounded for a 'liquid' feel */
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  /* 3D Depth & Lighting */
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  /* The transform is now handled by JS for a dynamic effect */
+  transition: transform 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.yellow-button {
+  --background: #fbbf24;
+  --background-activated: #f59e0b;
+  --color: #1a202c;
+  --box-shadow: 0 4px 15px -5px rgba(251, 191, 36, 0.6);
+  --border-radius: 12px;
+  font-weight: 700;
+  transform: translateY(0);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* MODIFIED: Gives buttons a 'pressed' feel on tap */
+.yellow-button:active {
+  transform: translateY(2px);
+  --box-shadow: 0 2px 10px -5px rgba(251, 191, 36, 0.8);
+}
+
+.footer-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 75px;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.footer-tabs button {
+  background: none;
+  border: none;
+  color: #bbb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  transition: color 0.2s;
+  position: relative;
+}
+
+/* MODIFIED: Active tab glow effect */
+.footer-tabs button.active {
+  color: #fbbf24;
+  text-shadow: 0 0 10px #fbbf24;
+}
+
+/* NEW: Bounce animation for the active icon */
+.footer-tabs button.active ion-icon {
+  animation: bounce 0.5s;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* --- Existing & Tweaked Styles --- */
+
 .run-action-card {
   padding: 8px;
 }
@@ -2907,7 +3067,7 @@ onMounted(() => {
   width: 70%;
   background-color: var(--ion-color-primary);
   border-radius: 4px 4px 0 0;
-  transition: height 0.5s ease-out;
+  transition: height 0.5s ease-out; /* NEW: Added transition for smooth animation */
   position: relative;
   min-height: 2px; /* Show a sliver for 0-distance days */
 }
@@ -2930,26 +3090,10 @@ onMounted(() => {
   color: var(--ion-color-medium);
 }
 
-ion-header ion-toolbar {
-  --background: #1e3a8a;
-}
-ion-content {
-  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
-}
-
 .welcome-text {
   font-size: 1.2rem;
   font-weight: 600;
   color: #fff;
-}
-.styled-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 1.5rem;
 }
 .styled-card ion-card-title {
   font-weight: 700;
@@ -2967,12 +3111,6 @@ ion-content {
   color: #fff;
   margin-bottom: 8px;
   --padding-start: 16px;
-}
-.yellow-button {
-  --background: #fbbf24;
-  --background-activated: #f59e0b;
-  --color: #1a202c;
-  font-weight: 700;
 }
 .stat-item {
   margin-bottom: 1rem;
@@ -3016,40 +3154,7 @@ ion-content {
 .level-emoji {
   font-size: 1.5rem;
 }
-.xp-text {
-  font-size: 0.8rem;
-  color: #d1d5db;
-  margin-top: 0.5rem;
-}
-.footer-tabs {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 75px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.footer-tabs button {
-  background: none;
-  border: none;
-  color: #bbb;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 12px;
-  transition: color 0.2s;
-}
-.footer-tabs button.active {
-  color: #fbbf24;
-}
+
 .footer-tabs ion-icon {
   font-size: 26px;
   margin-bottom: 2px;
@@ -3058,7 +3163,7 @@ ion-content {
   --padding-bottom: 80px;
 }
 .auth-modal ion-content {
-  --background: #1e3a8a;
+  --background: transparent;
 }
 .auth-modal .input-group {
   display: flex;
@@ -3092,6 +3197,7 @@ ion-content {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 .run-history-item:last-child {
   border-bottom: none;
@@ -3286,11 +3392,7 @@ ion-spinner {
 }
 
 .friend-card-refined {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* This class now inherits from .styled-card */
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -3400,7 +3502,7 @@ ion-progress-bar {
 }
 
 .summary-modal ion-content {
-  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
+  --background: transparent;
 }
 
 .summary-logo-icon {
@@ -3455,7 +3557,6 @@ ion-progress-bar {
 }
 
 .auth-modal ion-content {
-  --background: linear-gradient(170deg, #1e3a8a 0%, #0c1a4b 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3805,5 +3906,22 @@ ion-progress-bar {
 }
 .auth-separator:not(:empty)::after {
   margin-left: 0.5em;
+}
+
+ion-header ion-toolbar {
+  --background: #1e3a8a;
+}
+
+/* Override header for the new style */
+ion-header.ion-no-border {
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+ion-header.ion-no-border::after {
+  display: none;
+}
+ion-header.ion-no-border ion-toolbar {
+  --background: transparent;
+  --border-width: 0;
 }
 </style>
