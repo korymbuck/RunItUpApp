@@ -62,6 +62,8 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  fetchSignInMethodsForEmail,
+  sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -1240,9 +1242,38 @@ async function handleSignIn() {
 
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    //window.location.reload();
+    // Successful sign-in, onAuthStateChanged will handle UI updates.
   } catch (error) {
-    authMessage.value = `Error signing in: ${error.message}`;
+    console.error("Sign-in error:", error.code, error.message);
+
+    // This is the key logic: check for the specific error code.
+    if (error.code === "auth/invalid-credential") {
+      try {
+        // If the credential is bad, check what methods ARE available for this email.
+        const methods = await fetchSignInMethodsForEmail(auth, email.value);
+
+        // If the array of methods includes 'google.com', we know what's happening.
+        if (methods.includes("google.com")) {
+          authMessage.value =
+            "This email is linked with a Google account. Please use the 'Sign In with Google' button.";
+          // Optionally, show a more user-friendly toast notification.
+          presentToast(
+            "You've previously signed in with Google. Please use that option.",
+            "primary"
+          );
+        } else {
+          // If Google is not a method, then it was just a regular wrong password.
+          authMessage.value = "Invalid email or password.";
+        }
+      } catch (fetchError) {
+        // This catch handles cases where the email doesn't exist at all.
+        console.error("Error fetching sign-in methods:", fetchError);
+        authMessage.value = "Invalid email or password.";
+      }
+    } else {
+      // Handle other potential errors (e.g., network issues)
+      authMessage.value = `Error signing in: ${error.message}`;
+    }
   }
 }
 
@@ -1296,6 +1327,54 @@ async function handleSignUp() {
 async function handleSignOut() {
   cleanupListeners();
   await signOut(auth);
+}
+
+async function handleForgotPassword() {
+  const alert = await alertController.create({
+    header: "Reset Password",
+    message: "Please enter your email to receive a password reset link.",
+    cssClass: "custom-alert", // This uses your existing alert styling
+    inputs: [
+      {
+        name: "email",
+        type: "email",
+        placeholder: "you@example.com",
+      },
+    ],
+    buttons: [
+      {
+        text: "Cancel",
+        role: "cancel",
+      },
+      {
+        text: "Send",
+        handler: async (data) => {
+          const email = data.email.trim();
+          if (!email || !validators.isValidEmail(email)) {
+            presentToast("Please enter a valid email address.", "danger");
+            return false; // Prevents the alert from closing on invalid input
+          }
+
+          try {
+            await sendPasswordResetEmail(auth, email);
+            presentToast(
+              "Password reset link sent! Check your inbox and spam folder.",
+              "success"
+            );
+          } catch (error) {
+            console.error("Password reset error:", error);
+            // It's more secure to show a generic message whether the user exists or not.
+            presentToast(
+              "If an account exists for that email, a reset link has been sent.",
+              "warning"
+            );
+          }
+        },
+      },
+    ],
+  });
+
+  await alert.present();
 }
 
 async function addFriend() {
@@ -1879,6 +1958,10 @@ onUnmounted(() => {
             >
               {{ authView === "signin" ? "Sign In" : "Create Account" }}
             </ion-button>
+
+            <div class="forgot-password-link">
+              <a @click="handleForgotPassword">Forgot Password?</a>
+            </div>
 
             <div class="auth-separator">
               <span>OR</span>
@@ -3086,5 +3169,25 @@ ion-spinner {
   font-weight: bold;
   font-size: 1.1rem;
   z-index: 1;
+}
+
+/* Forgot Password Link */
+.forgot-password-link {
+  text-align: center; /* Changed from right to center */
+  margin-top: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.forgot-password-link a {
+  font-size: 0.9rem; /* Slightly larger for better tapping */
+  color: #fbbf24; /* Yellow to match the other links */
+  font-weight: 600; /* Bolded to match */
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+.forgot-password-link a:hover {
+  color: #ffffff; /* Change hover color to white */
 }
 </style>
