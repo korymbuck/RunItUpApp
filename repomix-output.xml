@@ -68,6 +68,110 @@ vite.config.js
 <files>
 This section contains the contents of the repository's files.
 
+<file path="public/manifest.json">
+{
+  "name": "Run It Up App",
+  "short_name": "RunItUp",
+  "description": "Your PWA Running Tracker powered by Ionic Vue",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
+</file>
+
+<file path="public/sw.js">
+const CACHE_NAME = "run-it-up-app-cache-v1";
+// List all files your app needs to function offline.
+// Ensure these paths are correct relative to the root of your public folder.
+const urlsToCache = [
+  "/", // Caches the root URL (your index.html when accessed directly)
+  "/index.html",
+  "/manifest.json",
+  "/icons/icon-192x192.png", // Make sure these paths match your manifest
+  "/icons/icon-512x512.png",
+  "/icons/icon-512x512.maskable.png",
+  // Add your CSS, JS, and other critical assets here:
+  "/assets/index-xxxxxxxx.js", // Replace with your actual main JS bundle (check your dist folder after build)
+  "/assets/index-xxxxxxxx.css", // Replace with your actual main CSS bundle (check your dist folder after build)
+  "/icons/boot.svg", // From your App.vue, ensure this path is correct
+];
+
+// Install event: caches assets
+self.addEventListener("install", (event) => {
+  console.log("[Service Worker] Install Event");
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => {
+        console.log("[Service Worker] Caching app shell");
+        return cache.addAll(urlsToCache);
+      })
+      .catch((error) => {
+        console.error("[Service Worker] Failed to cache:", error);
+      })
+  );
+});
+
+// Activate event: cleans up old caches
+self.addEventListener("activate", (event) => {
+  console.log("[Service Worker] Activate Event");
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
+
+// Fetch event: serves cached assets or fetches from network
+self.addEventListener("fetch", (event) => {
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      // Cache hit - return response
+      if (response) {
+        return response;
+      }
+      // No cache hit - fetch from network
+      return fetch(event.request);
+    })
+  );
+});
+</file>
+
+<file path="public/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+</file>
+
+<file path="src/assets/vue.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="37.07" height="36" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 198"><path fill="#41B883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36Z"></path><path fill="#41B883" d="m0 0l128 220.8L256 0h-51.2L128 132.48L50.56 0H0Z"></path><path fill="#35495E" d="M50.56 0L128 133.12L204.8 0h-47.36L128 51.2L97.92 0H50.56Z"></path></svg>
+</file>
+
 <file path="src/components/HomePage.vue">
 <template>
   <div class="ion-padding">
@@ -883,110 +987,6 @@ defineEmits(["openFollowModal", "openUserProfileModal", "unfollowUser"]);
 </style>
 </file>
 
-<file path="public/manifest.json">
-{
-  "name": "Run It Up App",
-  "short_name": "RunItUp",
-  "description": "Your PWA Running Tracker powered by Ionic Vue",
-  "start_url": "/index.html",
-  "display": "standalone",
-  "background_color": "#1e3a8a",
-  "theme_color": "#1e3a8a",
-  "icons": [
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ]
-}
-</file>
-
-<file path="public/sw.js">
-const CACHE_NAME = "run-it-up-app-cache-v1";
-// List all files your app needs to function offline.
-// Ensure these paths are correct relative to the root of your public folder.
-const urlsToCache = [
-  "/", // Caches the root URL (your index.html when accessed directly)
-  "/index.html",
-  "/manifest.json",
-  "/icons/icon-192x192.png", // Make sure these paths match your manifest
-  "/icons/icon-512x512.png",
-  "/icons/icon-512x512.maskable.png",
-  // Add your CSS, JS, and other critical assets here:
-  "/assets/index-xxxxxxxx.js", // Replace with your actual main JS bundle (check your dist folder after build)
-  "/assets/index-xxxxxxxx.css", // Replace with your actual main CSS bundle (check your dist folder after build)
-  "/icons/boot.svg", // From your App.vue, ensure this path is correct
-];
-
-// Install event: caches assets
-self.addEventListener("install", (event) => {
-  console.log("[Service Worker] Install Event");
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => {
-        console.log("[Service Worker] Caching app shell");
-        return cache.addAll(urlsToCache);
-      })
-      .catch((error) => {
-        console.error("[Service Worker] Failed to cache:", error);
-      })
-  );
-});
-
-// Activate event: cleans up old caches
-self.addEventListener("activate", (event) => {
-  console.log("[Service Worker] Activate Event");
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-});
-
-// Fetch event: serves cached assets or fetches from network
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Cache hit - return response
-      if (response) {
-        return response;
-      }
-      // No cache hit - fetch from network
-      return fetch(event.request);
-    })
-  );
-});
-</file>
-
-<file path="public/vite.svg">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
-</file>
-
-<file path="src/assets/vue.svg">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="37.07" height="36" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 198"><path fill="#41B883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36Z"></path><path fill="#41B883" d="m0 0l128 220.8L256 0h-51.2L128 132.48L50.56 0H0Z"></path><path fill="#35495E" d="M50.56 0L128 133.12L204.8 0h-47.36L128 51.2L97.92 0H50.56Z"></path></svg>
-</file>
-
 <file path="capacitor.config.json">
 {
   "appId": "app.runitup",
@@ -1052,22 +1052,6 @@ This template should help get you started developing with Vue 3 in Vite. The tem
 Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
 </file>
 
-<file path="vite.config.js">
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [vue()],
-  // Add this server configuration block
-  server: {
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
-    },
-  },
-});
-</file>
-
 <file path="public/icons/boot.svg">
 <svg width="160" height="160" viewBox="0 0 160 160" shape-rendering="geometricPrecision" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <rect x="1" y="1" width="159" height="159" fill="url(#pattern0_1_2)"/>
@@ -1104,6 +1088,24 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+</file>
+
+<file path="vite.config.js">
+// vite.config.js
+
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [vue()],
+
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+  },
+});
 </file>
 
 <file path="package.json">
@@ -1362,6 +1364,8 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  fetchSignInMethodsForEmail,
+  sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
@@ -2540,9 +2544,38 @@ async function handleSignIn() {
 
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    //window.location.reload();
+    // Successful sign-in, onAuthStateChanged will handle UI updates.
   } catch (error) {
-    authMessage.value = `Error signing in: ${error.message}`;
+    console.error("Sign-in error:", error.code, error.message);
+
+    // This is the key logic: check for the specific error code.
+    if (error.code === "auth/invalid-credential") {
+      try {
+        // If the credential is bad, check what methods ARE available for this email.
+        const methods = await fetchSignInMethodsForEmail(auth, email.value);
+
+        // If the array of methods includes 'google.com', we know what's happening.
+        if (methods.includes("google.com")) {
+          authMessage.value =
+            "This email is linked with a Google account. Please use the 'Sign In with Google' button.";
+          // Optionally, show a more user-friendly toast notification.
+          presentToast(
+            "You've previously signed in with Google. Please use that option.",
+            "primary"
+          );
+        } else {
+          // If Google is not a method, then it was just a regular wrong password.
+          authMessage.value = "Invalid email or password.";
+        }
+      } catch (fetchError) {
+        // This catch handles cases where the email doesn't exist at all.
+        console.error("Error fetching sign-in methods:", fetchError);
+        authMessage.value = "Invalid email or password.";
+      }
+    } else {
+      // Handle other potential errors (e.g., network issues)
+      authMessage.value = `Error signing in: ${error.message}`;
+    }
   }
 }
 
@@ -2596,6 +2629,54 @@ async function handleSignUp() {
 async function handleSignOut() {
   cleanupListeners();
   await signOut(auth);
+}
+
+async function handleForgotPassword() {
+  const alert = await alertController.create({
+    header: "Reset Password",
+    message: "Please enter your email to receive a password reset link.",
+    cssClass: "custom-alert", // This uses your existing alert styling
+    inputs: [
+      {
+        name: "email",
+        type: "email",
+        placeholder: "you@example.com",
+      },
+    ],
+    buttons: [
+      {
+        text: "Cancel",
+        role: "cancel",
+      },
+      {
+        text: "Send",
+        handler: async (data) => {
+          const email = data.email.trim();
+          if (!email || !validators.isValidEmail(email)) {
+            presentToast("Please enter a valid email address.", "danger");
+            return false; // Prevents the alert from closing on invalid input
+          }
+
+          try {
+            await sendPasswordResetEmail(auth, email);
+            presentToast(
+              "Password reset link sent! Check your inbox and spam folder.",
+              "success"
+            );
+          } catch (error) {
+            console.error("Password reset error:", error);
+            // It's more secure to show a generic message whether the user exists or not.
+            presentToast(
+              "If an account exists for that email, a reset link has been sent.",
+              "warning"
+            );
+          }
+        },
+      },
+    ],
+  });
+
+  await alert.present();
 }
 
 async function addFriend() {
@@ -3118,704 +3199,705 @@ onUnmounted(() => {
       </ion-content>
 
       <!-- ALL MODALS REMAIN IN THE PARENT App.vue COMPONENT -->
+    </template>
+    <ion-modal
+      :is-open="isAuthModalVisible"
+      :backdrop-dismiss="false"
+      class="auth-modal"
+    >
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card auth-card">
+          <ion-card-header class="auth-card-header">
+            <img src="/icons/boot.svg" alt="RunItUp Logo" class="auth-logo" />
+            <ion-card-title>{{
+              authView === "signin" ? "Welcome Back" : "Create Account"
+            }}</ion-card-title>
+          </ion-card-header>
 
-      <ion-modal
-        :is-open="isAuthModalVisible"
-        :backdrop-dismiss="false"
-        class="auth-modal"
-      >
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card auth-card">
-            <ion-card-header class="auth-card-header">
-              <img src="/icons/boot.svg" alt="RunItUp Logo" class="auth-logo" />
-              <ion-card-title>{{
-                authView === "signin" ? "Welcome Back" : "Create Account"
-              }}</ion-card-title>
-            </ion-card-header>
-
-            <ion-card-content>
-              <ion-item
-                v-if="authView === 'signup'"
-                lines="none"
-                class="input-with-icon"
-              >
-                <ion-icon :icon="personOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Username"
-                  v-model="displayName"
-                ></ion-input>
-              </ion-item>
-
-              <ion-item lines="none" class="input-with-icon">
-                <ion-icon :icon="mailOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Email"
-                  type="email"
-                  v-model="email"
-                ></ion-input>
-              </ion-item>
-
-              <ion-item lines="none" class="input-with-icon">
-                <ion-icon :icon="lockClosedOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Password"
-                  type="password"
-                  v-model="password"
-                ></ion-input>
-              </ion-item>
-
-              <p
-                v-if="authMessage"
-                class="ion-text-center ion-padding-horizontal"
-                style="color: var(--ion-color-warning); font-size: 0.9rem"
-              >
-                {{ authMessage }}
-              </p>
-
-              <ion-button
-                expand="block"
-                @click="authView === 'signin' ? handleSignIn() : handleSignUp()"
-                class="ion-margin-top yellow-button"
-              >
-                {{ authView === "signin" ? "Sign In" : "Create Account" }}
-              </ion-button>
-
-              <div class="auth-separator">
-                <span>OR</span>
-              </div>
-
-              <ion-button
-                expand="block"
-                @click="handleGoogleSignIn"
-                color="light"
-                class="ion-margin-top"
-              >
-                <ion-icon slot="start" src="/assets/google-icon.svg"></ion-icon>
-                Sign In with Google
-              </ion-button>
-
-              <div class="auth-toggle">
-                <p v-if="authView === 'signin'">
-                  Don't have an account?
-                  <a @click="authView = 'signup'">Sign Up</a>
-                </p>
-                <p v-else>
-                  Already have an account?
-                  <a @click="authView = 'signin'">Sign In</a>
-                </p>
-              </div>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Follow User Modal -->
-      <ion-modal
-        :is-open="isFollowModalVisible"
-        @didDismiss="closeFollowModal()"
-        class="auth-modal"
-      >
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card auth-card">
-            <ion-card-header class="auth-card-header">
-              <ion-button
-                fill="clear"
-                @click="closeFollowModal()"
-                class="modal-close-button"
-              >
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-              <ion-card-title>Follow a User</ion-card-title>
-            </ion-card-header>
-
-            <ion-card-content>
-              <ion-item lines="none" class="input-with-icon">
-                <ion-icon :icon="personOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Enter username to follow"
-                  v-model="friendUsername"
-                ></ion-input>
-              </ion-item>
-
-              <ion-button
-                expand="block"
-                @click="addFriend"
-                class="ion-margin-top yellow-button"
-              >
-                Follow
-              </ion-button>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- User Profile Summary Modal -->
-      <ion-modal
-        :is-open="isUserProfileModalVisible"
-        @didDismiss="isUserProfileModalVisible = false"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title v-if="selectedFriendProfile"
-              >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
+          <ion-card-content>
+            <ion-item
+              v-if="authView === 'signup'"
+              lines="none"
+              class="input-with-icon"
             >
-            <ion-buttons slot="end">
-              <ion-button @click="isUserProfileModalVisible = false">
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding" v-if="selectedFriendProfile">
-          <!-- Profile Stats Card -->
-          <ion-card class="styled-card profile-stats-card">
-            <ion-card-content>
-              <div class="profile-header">
-                <img
-                  :src="selectedFriendProfile.photoURL || '/default-avatar.png'"
-                  class="profile-picture-main"
-                />
-                <div class="profile-info">
-                  <h2 class="profile-display-name">
-                    {{ selectedFriendProfile.displayName }}
-                  </h2>
-                  <div class="profile-level" v-if="selectedFriendProfile.stats">
-                    <span class="level-icon">{{
-                      getLevelForXp(selectedFriendProfile.stats.xp).emoji
-                    }}</span>
-                    <span
-                      >{{ getLevelForXp(selectedFriendProfile.stats.xp).name }}
-                      -
-                      {{ Math.floor(selectedFriendProfile.stats.xp) }} XP</span
-                    >
-                  </div>
-                </div>
-              </div>
-              <ion-progress-bar
-                v-if="selectedFriendProfile.stats"
-                :value="getProgressForXp(selectedFriendProfile.stats.xp)"
-                color="warning"
-                class="ion-margin-vertical"
-              ></ion-progress-bar>
-              <div
-                class="profile-lifetime-stats"
-                v-if="selectedFriendProfile.stats"
-              >
-                <div class="stat-block">
-                  <p class="stat-title">Total Distance</p>
-                  <p class="stat-value">
-                    {{ selectedFriendProfile.stats.totalDistance.toFixed(2) }}
-                    mi
-                  </p>
-                </div>
-                <div class="stat-block">
-                  <p class="stat-title">Total Time</p>
-                  <p class="stat-value">
-                    {{
-                      formatTime(selectedFriendProfile.stats.totalTime, true)
-                    }}
-                  </p>
-                </div>
-              </div>
-            </ion-card-content>
-          </ion-card>
+              <ion-icon :icon="personOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Username"
+                v-model="displayName"
+              ></ion-input>
+            </ion-item>
 
-          <!-- Recent Runs -->
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Recent Runs</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <div v-if="isFetchingFriendRuns" class="ion-text-center">
-                <ion-spinner></ion-spinner>
-                <p>Loading runs...</p>
-              </div>
-              <ion-list
-                lines="none"
-                v-else-if="
-                  selectedFriendProfile.runs &&
-                  selectedFriendProfile.runs.length > 0
-                "
-              >
-                <div
-                  v-for="run in selectedFriendProfile.runs"
-                  :key="run.id"
-                  class="run-history-item"
-                >
-                  <div class="run-history-header">
-                    <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
-                  </div>
-                  <p v-if="run.description" class="run-description">
-                    "{{ run.description }}"
-                  </p>
-                  <div class="run-history-stats">
-                    <div>
-                      <p class="stat-label">Distance</p>
-                      <p class="stat-value small">
-                        {{ run.distance.toFixed(2) }}
-                        <span class="stat-unit">mi</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Time</p>
-                      <p class="stat-value small">
-                        {{ formatTime(run.time, true) }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Avg Pace</p>
-                      <p class="stat-value small">{{ formatTime(run.pace) }}</p>
-                    </div>
-                  </div>
-                </div>
-              </ion-list>
-              <p v-else class="ion-text-center no-data-text">
-                This user has no logged runs yet.
-              </p>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-icon :icon="mailOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Email"
+                type="email"
+                v-model="email"
+              ></ion-input>
+            </ion-item>
 
-      <!-- Run Summary Modal -->
-      <ion-modal
-        :is-open="isSummaryModalVisible"
-        @didDismiss="handleSummaryModalDismiss"
-        class="summary-modal"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Run Complete!</ion-title>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-icon :icon="lockClosedOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Password"
+                type="password"
+                v-model="password"
+              ></ion-input>
+            </ion-item>
+
+            <p
+              v-if="authMessage"
+              class="ion-text-center ion-padding-horizontal"
+              style="color: var(--ion-color-warning); font-size: 0.9rem"
+            >
+              {{ authMessage }}
+            </p>
+
             <ion-button
-              slot="end"
-              fill="clear"
-              @click="isSummaryModalVisible = false"
+              expand="block"
+              @click="authView === 'signin' ? handleSignIn() : handleSignUp()"
+              class="ion-margin-top yellow-button"
             >
-              <ion-icon :icon="closeCircle"></ion-icon>
+              {{ authView === "signin" ? "Sign In" : "Create Account" }}
             </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card" v-if="lastRunSummary">
-            <!-- Map Summary -->
-            <div
-              id="summary-map"
-              ref="summaryMapContainer"
-              v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
-            ></div>
-            <ion-card-header>
-              <img
-                src="/icons/boot.svg"
-                alt="RunItUp Logo"
-                class="summary-logo-icon"
-              />
-              <ion-card-title class="summary-title"
-                >Great Work, {{ displayName }}!</ion-card-title
-              >
-            </ion-card-header>
-            <ion-card-content>
-              <div v-if="lastRunSummary.weather" class="weather-summary">
-                <ion-icon
-                  :icon="getWeatherIcon(lastRunSummary.weather.description)"
-                  class="weather-icon"
-                ></ion-icon>
 
-                <span class="weather-temp"
-                  >{{ Math.round(lastRunSummary.weather.temp) }}&deg;F</span
-                >
+            <div class="forgot-password-link">
+              <a @click="handleForgotPassword">Forgot Password?</a>
+            </div>
+
+            <div class="auth-separator">
+              <span>OR</span>
+            </div>
+
+            <ion-button
+              expand="block"
+              @click="handleGoogleSignIn"
+              color="light"
+              class="ion-margin-top"
+            >
+              <ion-icon slot="start" src="/assets/google-icon.svg"></ion-icon>
+              Sign In with Google
+            </ion-button>
+
+            <div class="auth-toggle">
+              <p v-if="authView === 'signin'">
+                Don't have an account?
+                <a @click="authView = 'signup'">Sign Up</a>
+              </p>
+              <p v-else>
+                Already have an account?
+                <a @click="authView = 'signin'">Sign In</a>
+              </p>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Follow User Modal -->
+    <ion-modal
+      :is-open="isFollowModalVisible"
+      @didDismiss="closeFollowModal()"
+      class="auth-modal"
+    >
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card auth-card">
+          <ion-card-header class="auth-card-header">
+            <ion-button
+              fill="clear"
+              @click="closeFollowModal()"
+              class="modal-close-button"
+            >
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+            </ion-button>
+            <ion-card-title>Follow a User</ion-card-title>
+          </ion-card-header>
+
+          <ion-card-content>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-icon :icon="personOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Enter username to follow"
+                v-model="friendUsername"
+              ></ion-input>
+            </ion-item>
+
+            <ion-button
+              expand="block"
+              @click="addFriend"
+              class="ion-margin-top yellow-button"
+            >
+              Follow
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- User Profile Summary Modal -->
+    <ion-modal
+      :is-open="isUserProfileModalVisible"
+      @didDismiss="isUserProfileModalVisible = false"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title v-if="selectedFriendProfile"
+            >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
+          >
+          <ion-buttons slot="end">
+            <ion-button @click="isUserProfileModalVisible = false">
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding" v-if="selectedFriendProfile">
+        <!-- Profile Stats Card -->
+        <ion-card class="styled-card profile-stats-card">
+          <ion-card-content>
+            <div class="profile-header">
+              <img
+                :src="selectedFriendProfile.photoURL || '/default-avatar.png'"
+                class="profile-picture-main"
+              />
+              <div class="profile-info">
+                <h2 class="profile-display-name">
+                  {{ selectedFriendProfile.displayName }}
+                </h2>
+                <div class="profile-level" v-if="selectedFriendProfile.stats">
+                  <span class="level-icon">{{
+                    getLevelForXp(selectedFriendProfile.stats.xp).emoji
+                  }}</span>
+                  <span
+                    >{{ getLevelForXp(selectedFriendProfile.stats.xp).name }}
+                    -
+                    {{ Math.floor(selectedFriendProfile.stats.xp) }} XP</span
+                  >
+                </div>
               </div>
-              <ion-grid class="summary-stats-grid">
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="rocket" color="primary"></ion-icon>
+            </div>
+            <ion-progress-bar
+              v-if="selectedFriendProfile.stats"
+              :value="getProgressForXp(selectedFriendProfile.stats.xp)"
+              color="warning"
+              class="ion-margin-vertical"
+            ></ion-progress-bar>
+            <div
+              class="profile-lifetime-stats"
+              v-if="selectedFriendProfile.stats"
+            >
+              <div class="stat-block">
+                <p class="stat-title">Total Distance</p>
+                <p class="stat-value">
+                  {{ selectedFriendProfile.stats.totalDistance.toFixed(2) }}
+                  mi
+                </p>
+              </div>
+              <div class="stat-block">
+                <p class="stat-title">Total Time</p>
+                <p class="stat-value">
+                  {{ formatTime(selectedFriendProfile.stats.totalTime, true) }}
+                </p>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Recent Runs -->
+        <ion-card class="styled-card">
+          <ion-card-header>
+            <ion-card-title>Recent Runs</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div v-if="isFetchingFriendRuns" class="ion-text-center">
+              <ion-spinner></ion-spinner>
+              <p>Loading runs...</p>
+            </div>
+            <ion-list
+              lines="none"
+              v-else-if="
+                selectedFriendProfile.runs &&
+                selectedFriendProfile.runs.length > 0
+              "
+            >
+              <div
+                v-for="run in selectedFriendProfile.runs"
+                :key="run.id"
+                class="run-history-item"
+              >
+                <div class="run-history-header">
+                  <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
+                </div>
+                <p v-if="run.description" class="run-description">
+                  "{{ run.description }}"
+                </p>
+                <div class="run-history-stats">
+                  <div>
                     <p class="stat-label">Distance</p>
-                    <p class="stat-value">
-                      {{ lastRunSummary.distance.toFixed(2) }}
+                    <p class="stat-value small">
+                      {{ run.distance.toFixed(2) }}
                       <span class="stat-unit">mi</span>
                     </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                  </div>
+                  <div>
                     <p class="stat-label">Time</p>
-                    <p class="stat-value">
-                      {{ formatTime(lastRunSummary.time, true) }}
-                    </p>
-                  </ion-col>
-                </ion-row>
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="speedometer" color="primary"></ion-icon>
-                    <p class="stat-label">Avg. Pace</p>
-                    <p class="stat-value">
-                      {{ formatTime(lastRunSummary.pace) }}
-                      <span class="stat-unit">/mi</span>
-                    </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="statsChart" color="primary"></ion-icon>
-                    <p class="stat-label">XP Gained</p>
-                    <p class="stat-value">{{ lastRunXp }}</p>
-                  </ion-col>
-                </ion-row>
-              </ion-grid>
-              <!-- Run Description Input -->
-              <ion-item lines="none" class="input-with-icon ion-margin-top">
-                <ion-input
-                  label="Description"
-                  label-placement="floating"
-                  placeholder="(Optional)"
-                  v-model="runSummaryDescription"
-                ></ion-input>
-              </ion-item>
-              <!-- Shoe Selector Dropdown -->
-              <ion-item
-                lines="none"
-                class="input-with-icon ion-margin-top"
-                v-if="userShoes.length > 0"
-              >
-                <ion-label>Shoe Worn</ion-label>
-                <ion-select
-                  placeholder="Select Shoe"
-                  v-model="selectedShoeForRun"
-                >
-                  <ion-select-option
-                    v-for="shoe in userShoes"
-                    :key="shoe.id"
-                    :value="shoe.id"
-                  >
-                    {{ shoe.brandName }} {{ shoe.modelName }}
-                  </ion-select-option>
-                </ion-select>
-              </ion-item>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Live Tracking Modal -->
-      <ion-modal
-        :is-open="isLiveTrackingModalVisible"
-        @ionModalDidDismiss="destroyMap"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Live Run</ion-title>
-            <ion-button
-              slot="end"
-              fill="clear"
-              @click="isLiveTrackingModalVisible = false"
-            >
-              <ion-icon :icon="closeCircle"></ion-icon>
-            </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Track a Run</ion-card-title>
-            </ion-card-header>
-            <div id="map" ref="mapContainer"></div>
-            <ion-card-content>
-              <ion-button
-                v-if="!isTracking"
-                expand="block"
-                @click="startWorkout"
-                class="yellow-button"
-                >Start Tracking</ion-button
-              >
-              <div v-if="isTracking">
-                <div class="tracking-stats">
-                  <div>
-                    <p class="tracking-label">DISTANCE</p>
-                    <p class="tracking-value">
-                      {{ currentDistance.toFixed(2) }} mi
+                    <p class="stat-value small">
+                      {{ formatTime(run.time, true) }}
                     </p>
                   </div>
                   <div>
-                    <p class="tracking-label">PACE</p>
-                    <p class="tracking-value">
-                      {{ formatTime(currentPace) }}
-                    </p>
+                    <p class="stat-label">Avg Pace</p>
+                    <p class="stat-value small">{{ formatTime(run.pace) }}</p>
                   </div>
-                  <div>
-                    <p class="tracking-label">TIME</p>
-                    <p class="tracking-value">
-                      {{ formatTime(elapsedTime) }}
-                    </p>
-                  </div>
-                </div>
-                <!-- Hold to Stop Button -->
-                <div
-                  class="hold-to-stop-button ion-margin-top"
-                  @mousedown="startHoldStop"
-                  @mouseup="cancelHoldStop"
-                  @mouseleave="cancelHoldStop"
-                  @touchstart.prevent="startHoldStop"
-                  @touchend="cancelHoldStop"
-                >
-                  <div
-                    class="hold-progress"
-                    :style="{ transform: `scaleX(${holdProgress})` }"
-                  ></div>
-                  <span class="hold-text">HOLD TO STOP</span>
                 </div>
               </div>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
+            </ion-list>
+            <p v-else class="ion-text-center no-data-text">
+              This user has no logged runs yet.
+            </p>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
 
-      <!-- Log Run Modal -->
-      <ion-modal :is-open="isLogRunModalVisible">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Log a Past Run</ion-title>
-            <ion-button
-              slot="end"
-              fill="clear"
-              @click="isLogRunModalVisible = false"
+    <!-- Run Summary Modal -->
+    <ion-modal
+      :is-open="isSummaryModalVisible"
+      @didDismiss="handleSummaryModalDismiss"
+      class="summary-modal"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Run Complete!</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isSummaryModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card" v-if="lastRunSummary">
+          <!-- Map Summary -->
+          <div
+            id="summary-map"
+            ref="summaryMapContainer"
+            v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
+          ></div>
+          <ion-card-header>
+            <img
+              src="/icons/boot.svg"
+              alt="RunItUp Logo"
+              class="summary-logo-icon"
+            />
+            <ion-card-title class="summary-title"
+              >Great Work, {{ displayName }}!</ion-card-title
             >
-              <ion-icon :icon="closeCircle"></ion-icon>
-            </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Log a Run</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <div class="input-group">
+          </ion-card-header>
+          <ion-card-content>
+            <div v-if="lastRunSummary.weather" class="weather-summary">
+              <ion-icon
+                :icon="getWeatherIcon(lastRunSummary.weather.description)"
+                class="weather-icon"
+              ></ion-icon>
+
+              <span class="weather-temp"
+                >{{ Math.round(lastRunSummary.weather.temp) }}&deg;F</span
+              >
+            </div>
+            <ion-grid class="summary-stats-grid">
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="rocket" color="primary"></ion-icon>
+                  <p class="stat-label">Distance</p>
+                  <p class="stat-value">
+                    {{ lastRunSummary.distance.toFixed(2) }}
+                    <span class="stat-unit">mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                  <p class="stat-label">Time</p>
+                  <p class="stat-value">
+                    {{ formatTime(lastRunSummary.time, true) }}
+                  </p>
+                </ion-col>
+              </ion-row>
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="speedometer" color="primary"></ion-icon>
+                  <p class="stat-label">Avg. Pace</p>
+                  <p class="stat-value">
+                    {{ formatTime(lastRunSummary.pace) }}
+                    <span class="stat-unit">/mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="statsChart" color="primary"></ion-icon>
+                  <p class="stat-label">XP Gained</p>
+                  <p class="stat-value">{{ lastRunXp }}</p>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+            <!-- Run Description Input -->
+            <ion-item lines="none" class="input-with-icon ion-margin-top">
+              <ion-input
+                label="Description"
+                label-placement="floating"
+                placeholder="(Optional)"
+                v-model="runSummaryDescription"
+              ></ion-input>
+            </ion-item>
+            <!-- Shoe Selector Dropdown -->
+            <ion-item
+              lines="none"
+              class="input-with-icon ion-margin-top"
+              v-if="userShoes.length > 0"
+            >
+              <ion-label>Shoe Worn</ion-label>
+              <ion-select
+                placeholder="Select Shoe"
+                v-model="selectedShoeForRun"
+              >
+                <ion-select-option
+                  v-for="shoe in userShoes"
+                  :key="shoe.id"
+                  :value="shoe.id"
+                >
+                  {{ shoe.brandName }} {{ shoe.modelName }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Live Tracking Modal -->
+    <ion-modal
+      :is-open="isLiveTrackingModalVisible"
+      @ionModalDidDismiss="destroyMap"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Live Run</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isLiveTrackingModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-header>
+            <ion-card-title>Track a Run</ion-card-title>
+          </ion-card-header>
+          <div id="map" ref="mapContainer"></div>
+          <ion-card-content>
+            <ion-button
+              v-if="!isTracking"
+              expand="block"
+              @click="startWorkout"
+              class="yellow-button"
+              >Start Tracking</ion-button
+            >
+            <div v-if="isTracking">
+              <div class="tracking-stats">
+                <div>
+                  <p class="tracking-label">DISTANCE</p>
+                  <p class="tracking-value">
+                    {{ currentDistance.toFixed(2) }} mi
+                  </p>
+                </div>
+                <div>
+                  <p class="tracking-label">PACE</p>
+                  <p class="tracking-value">
+                    {{ formatTime(currentPace) }}
+                  </p>
+                </div>
+                <div>
+                  <p class="tracking-label">TIME</p>
+                  <p class="tracking-value">
+                    {{ formatTime(elapsedTime) }}
+                  </p>
+                </div>
+              </div>
+              <!-- Hold to Stop Button -->
+              <div
+                class="hold-to-stop-button ion-margin-top"
+                @mousedown="startHoldStop"
+                @mouseup="cancelHoldStop"
+                @mouseleave="cancelHoldStop"
+                @touchstart.prevent="startHoldStop"
+                @touchend="cancelHoldStop"
+              >
+                <div
+                  class="hold-progress"
+                  :style="{ transform: `scaleX(${holdProgress})` }"
+                ></div>
+                <span class="hold-text">HOLD TO STOP</span>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Log Run Modal -->
+    <ion-modal :is-open="isLogRunModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Log a Past Run</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isLogRunModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-header>
+            <ion-card-title>Log a Run</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="input-group">
+              <ion-input
+                class="styled-input"
+                placeholder="Distance (miles)"
+                type="number"
+                v-model="distanceInput"
+              ></ion-input>
+              <div style="display: flex; gap: 8px" class="ion-margin-top">
                 <ion-input
                   class="styled-input"
-                  placeholder="Distance (miles)"
+                  placeholder="Hours"
                   type="number"
-                  v-model="distanceInput"
+                  v-model="hoursInput"
                 ></ion-input>
-                <div style="display: flex; gap: 8px" class="ion-margin-top">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Hours"
-                    type="number"
-                    v-model="hoursInput"
-                  ></ion-input>
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Minutes"
-                    type="number"
-                    v-model="minutesInput"
-                  ></ion-input>
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Seconds"
-                    type="number"
-                    v-model="secondsInput"
-                  ></ion-input>
-                </div>
+                <ion-input
+                  class="styled-input"
+                  placeholder="Minutes"
+                  type="number"
+                  v-model="minutesInput"
+                ></ion-input>
+                <ion-input
+                  class="styled-input"
+                  placeholder="Seconds"
+                  type="number"
+                  v-model="secondsInput"
+                ></ion-input>
               </div>
-              <!-- Run Description Input -->
-              <ion-item lines="none" class="input-with-icon ion-margin-top">
-                <ion-input
-                  label="Description"
-                  label-placement="floating"
-                  placeholder="(Optional)"
-                  v-model="logRunDescription"
-                ></ion-input>
-              </ion-item>
-              <!-- Shoe Selector Dropdown -->
-              <ion-item
-                lines="none"
-                class="input-with-icon ion-margin-top"
-                v-if="userShoes.length > 0"
-              >
-                <ion-label>Shoe Worn (Optional)</ion-label>
-                <ion-select
-                  placeholder="Select Shoe"
-                  v-model="selectedShoeForRun"
-                >
-                  <ion-select-option
-                    v-for="shoe in userShoes"
-                    :key="shoe.id"
-                    :value="shoe.id"
-                  >
-                    {{ shoe.brandName }} {{ shoe.modelName }}
-                  </ion-select-option>
-                </ion-select>
-              </ion-item>
-              <ion-button
-                expand="block"
-                @click="logRun"
-                class="ion-margin-top yellow-button"
-                >Log Run</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-      <!-- Profile Settings Dropdown -->
-      <ion-modal :is-open="isEditProfileModalVisible">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Edit Profile</ion-title>
-            <ion-buttons slot="end">
-              <ion-button @click="isEditProfileModalVisible = false">
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-content>
-              <ion-list>
-                <ion-item lines="none">
-                  <ion-button
-                    expand="block"
-                    fill="outline"
-                    @click="triggerFileUpload"
-                    class="full-width-button"
-                  >
-                    Change Profile Picture
-                  </ion-button>
-                  <input
-                    type="file"
-                    @change="handlePictureUpload"
-                    ref="fileInput"
-                    style="display: none"
-                    accept="image/*"
-                  />
-                </ion-item>
-                <ion-item lines="none">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Enter new username"
-                    v-model="newDisplayName"
-                  ></ion-input>
-                </ion-item>
-                <ion-item lines="none">
-                  <ion-button
-                    expand="block"
-                    @click="updateUsername"
-                    color="primary"
-                    class="full-width-button"
-                  >
-                    Save Username
-                  </ion-button>
-                </ion-item>
-              </ion-list>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Add Shoe Modal -->
-      <ion-modal :is-open="isAddShoeModalVisible">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Add a New Shoe</ion-title>
-            <ion-buttons slot="end">
-              <ion-button @click="isAddShoeModalVisible = false">
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-content>
-              <ion-item lines="none" class="input-with-icon">
-                <ion-input
-                  label="Brand Name"
-                  label-placement="floating"
-                  placeholder="e.g., Hoka"
-                  v-model="newShoeBrand"
-                ></ion-input>
-              </ion-item>
-              <ion-item lines="none" class="input-with-icon">
-                <ion-input
-                  label="Model Name"
-                  label-placement="floating"
-                  placeholder="e.g., Clifton 9"
-                  v-model="newShoeModel"
-                ></ion-input>
-              </ion-item>
-              <ion-button
-                expand="block"
-                @click="addShoe"
-                class="ion-margin-top yellow-button"
-                >Save Shoe</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Shoe Detail Modal -->
-      <ion-modal
-        :is-open="isShoeDetailModalVisible"
-        @didDismiss="isShoeDetailModalVisible = false"
-        class="summary-modal"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Shoe Details</ion-title>
-            <ion-button
-              slot="end"
-              fill="clear"
-              @click="isShoeDetailModalVisible = false"
+            </div>
+            <!-- Run Description Input -->
+            <ion-item lines="none" class="input-with-icon ion-margin-top">
+              <ion-input
+                label="Description"
+                label-placement="floating"
+                placeholder="(Optional)"
+                v-model="logRunDescription"
+              ></ion-input>
+            </ion-item>
+            <!-- Shoe Selector Dropdown -->
+            <ion-item
+              lines="none"
+              class="input-with-icon ion-margin-top"
+              v-if="userShoes.length > 0"
             >
-              <ion-icon :icon="closeCircle"></ion-icon>
+              <ion-label>Shoe Worn (Optional)</ion-label>
+              <ion-select
+                placeholder="Select Shoe"
+                v-model="selectedShoeForRun"
+              >
+                <ion-select-option
+                  v-for="shoe in userShoes"
+                  :key="shoe.id"
+                  :value="shoe.id"
+                >
+                  {{ shoe.brandName }} {{ shoe.modelName }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+            <ion-button
+              expand="block"
+              @click="logRun"
+              class="ion-margin-top yellow-button"
+              >Log Run</ion-button
+            >
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+    <!-- Profile Settings Dropdown -->
+    <ion-modal :is-open="isEditProfileModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Edit Profile</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isEditProfileModalVisible = false">
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
             </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card" v-if="selectedShoeDetails">
-            <ion-card-header>
-              <ion-card-title class="summary-title">
-                {{ selectedShoeDetails.brandName }}
-              </ion-card-title>
-              <p class="ion-text-center">{{ selectedShoeDetails.modelName }}</p>
-            </ion-card-header>
-            <ion-card-content>
-              <ion-grid class="summary-stats-grid">
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="rocket" color="primary"></ion-icon>
-                    <p class="stat-label">Total Distance</p>
-                    <p class="stat-value">
-                      {{ selectedShoeDetails.totalDistance.toFixed(2) }}
-                      <span class="stat-unit">mi</span>
-                    </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="timeOutline" color="primary"></ion-icon>
-                    <p class="stat-label">Total Time</p>
-                    <p class="stat-value">
-                      {{ formatTime(selectedShoeDetails.totalTime, true) }}
-                    </p>
-                  </ion-col>
-                </ion-row>
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="speedometer" color="primary"></ion-icon>
-                    <p class="stat-label">Avg. Pace</p>
-                    <p class="stat-value">
-                      {{ formatTime(averagePaceInSelectedShoe) }}
-                      <span class="stat-unit">/mi</span>
-                    </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="footsteps" color="primary"></ion-icon>
-                    <p class="stat-label">Total Runs</p>
-                    <p class="stat-value">{{ selectedShoeDetails.runCount }}</p>
-                  </ion-col>
-                </ion-row>
-              </ion-grid>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-    </template>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-content>
+            <ion-list>
+              <ion-item lines="none">
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  @click="triggerFileUpload"
+                  class="full-width-button"
+                >
+                  Change Profile Picture
+                </ion-button>
+                <input
+                  type="file"
+                  @change="handlePictureUpload"
+                  ref="fileInput"
+                  style="display: none"
+                  accept="image/*"
+                />
+              </ion-item>
+              <ion-item lines="none">
+                <ion-input
+                  class="styled-input"
+                  placeholder="Enter new username"
+                  v-model="newDisplayName"
+                ></ion-input>
+              </ion-item>
+              <ion-item lines="none">
+                <ion-button
+                  expand="block"
+                  @click="updateUsername"
+                  color="primary"
+                  class="full-width-button"
+                >
+                  Save Username
+                </ion-button>
+              </ion-item>
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Add Shoe Modal -->
+    <ion-modal :is-open="isAddShoeModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Add a New Shoe</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isAddShoeModalVisible = false">
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-content>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-input
+                label="Brand Name"
+                label-placement="floating"
+                placeholder="e.g., Hoka"
+                v-model="newShoeBrand"
+              ></ion-input>
+            </ion-item>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-input
+                label="Model Name"
+                label-placement="floating"
+                placeholder="e.g., Clifton 9"
+                v-model="newShoeModel"
+              ></ion-input>
+            </ion-item>
+            <ion-button
+              expand="block"
+              @click="addShoe"
+              class="ion-margin-top yellow-button"
+              >Save Shoe</ion-button
+            >
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Shoe Detail Modal -->
+    <ion-modal
+      :is-open="isShoeDetailModalVisible"
+      @didDismiss="isShoeDetailModalVisible = false"
+      class="summary-modal"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Shoe Details</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isShoeDetailModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card" v-if="selectedShoeDetails">
+          <ion-card-header>
+            <ion-card-title class="summary-title">
+              {{ selectedShoeDetails.brandName }}
+            </ion-card-title>
+            <p class="ion-text-center">{{ selectedShoeDetails.modelName }}</p>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-grid class="summary-stats-grid">
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="rocket" color="primary"></ion-icon>
+                  <p class="stat-label">Total Distance</p>
+                  <p class="stat-value">
+                    {{ selectedShoeDetails.totalDistance.toFixed(2) }}
+                    <span class="stat-unit">mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                  <p class="stat-label">Total Time</p>
+                  <p class="stat-value">
+                    {{ formatTime(selectedShoeDetails.totalTime, true) }}
+                  </p>
+                </ion-col>
+              </ion-row>
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="speedometer" color="primary"></ion-icon>
+                  <p class="stat-label">Avg. Pace</p>
+                  <p class="stat-value">
+                    {{ formatTime(averagePaceInSelectedShoe) }}
+                    <span class="stat-unit">/mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="footsteps" color="primary"></ion-icon>
+                  <p class="stat-label">Total Runs</p>
+                  <p class="stat-value">{{ selectedShoeDetails.runCount }}</p>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
   </ion-app>
 </template>
 
@@ -4389,6 +4471,26 @@ ion-spinner {
   font-weight: bold;
   font-size: 1.1rem;
   z-index: 1;
+}
+
+/* Forgot Password Link */
+.forgot-password-link {
+  text-align: center; /* Changed from right to center */
+  margin-top: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.forgot-password-link a {
+  font-size: 0.9rem; /* Slightly larger for better tapping */
+  color: #fbbf24; /* Yellow to match the other links */
+  font-weight: 600; /* Bolded to match */
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+.forgot-password-link a:hover {
+  color: #ffffff; /* Change hover color to white */
 }
 </style>
 </file>

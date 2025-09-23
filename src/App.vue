@@ -95,7 +95,7 @@ import HomePage from "./components/HomePage.vue";
 import SocialPage from "./components/SocialPage.vue";
 import ProfilePage from "./components/ProfilePage.vue";
 
-// --- NEW: Input Validation and Sanitization Utilities ---
+// --- Input Validation and Sanitization Utilities ---
 const validators = {
   isValidEmail: (email) => {
     const re =
@@ -210,9 +210,8 @@ const runSummaryDescription = ref("");
 const logRunDescription = ref("");
 
 // -- MAPS STATE --
-const mapContainer = ref(null); // To get a reference to the div
-let map = null; // We use 'let' because the map instance itself isn't reactive
-let userMarker = null;
+const mapContainer = ref(null);
+let map = null;
 let routePolyline = null;
 const summaryMapContainer = ref(null);
 let summaryMap = null;
@@ -225,9 +224,7 @@ const MAPBOX_ACCESS_TOKEN =
 // --- COMPUTED ---
 const setMapRef = (key, el) => {
   if (el) {
-    // This function will initialize the map
     const initialize = () => {
-      // Find the route data associated with this map key
       const type = key.startsWith("run-") ? "run" : "friend";
       const id = key.substring(type.length + 1);
       let routeData = null;
@@ -240,19 +237,16 @@ const setMapRef = (key, el) => {
         if (friend) routeData = friend.stats?.lastRun?.route;
       }
 
-      // If we have data and the map isn't already there, create it
       if (routeData && routeData.length > 0 && !el._leaflet_id) {
         initRunCardMap(el, routeData);
       }
     };
 
-    // The ResizeObserver is the key. It waits for the element to have a size.
     const observer = new ResizeObserver((entries) => {
       for (let entry of entries) {
-        // As soon as the container has a width, we know it's visible.
         if (entry.contentRect.width > 0) {
           initialize();
-          // Once the map is initialized, we don't need to observe it anymore.
+
           observer.unobserve(el);
         }
       }
@@ -286,7 +280,7 @@ const lastRunXp = computed(() =>
 
 const getStartOfWeek = (date, offset = 0) => {
   const d = new Date(date);
-  d.setDate(d.getDate() - d.getDay() + offset * 7); // Go to Sunday of the offset week
+  d.setDate(d.getDate() - d.getDay() + offset * 7);
   d.setHours(0, 0, 0, 0);
   return d;
 };
@@ -345,14 +339,12 @@ const averagePaceInSelectedShoe = computed(() => {
 });
 
 const sortedFriends = computed(() => {
-  // Create a shallow copy to avoid mutating the original array
   return [...friends.value].sort((a, b) => {
     const aLastRun = a.stats?.lastRun?.date;
     const bLastRun = b.stats?.lastRun?.date;
 
-    // If 'b' has no last run, it should come after 'a'
     if (!bLastRun) return -1;
-    // If 'a' has no last run, it should come after 'b'
+
     if (!aLastRun) return 1;
 
     // Sort by the most recent date first (descending order)
@@ -372,7 +364,6 @@ watch(isLiveTrackingModalVisible, (isNowVisible) => {
 
 watch(isSummaryModalVisible, (isNowVisible) => {
   if (isNowVisible) {
-    // Apply the same logic for the summary map
     setTimeout(() => {
       initSummaryMap();
     }, 200);
@@ -393,7 +384,6 @@ function getLevelForXp(friendXp) {
   return { ...levels[levels.length - 1], index: levels.length - 1 };
 }
 
-// New function to calculate progress percentage for any given XP
 function getProgressForXp(friendXp) {
   if (typeof friendXp !== "number") friendXp = 0;
   const currentFriendLevel = getLevelForXp(friendXp);
@@ -539,7 +529,7 @@ async function fetchRunsForUser(userId) {
     collection(db, "runs"),
     where("userId", "==", userId),
     orderBy("timestamp", "desc"),
-    limit(5) // Fetch the 5 most recent runs
+    limit(5)
   );
   const querySnapshot = await getDocs(runsQuery);
   return querySnapshot.docs.map((d) => ({
@@ -571,7 +561,6 @@ async function openUserProfileModal(friend) {
 }
 
 async function initRunCardMap(container, route) {
-  // Guard against re-initialization and ensure container exists.
   if (!container || container._leaflet_id) {
     return;
   }
@@ -588,7 +577,7 @@ async function initRunCardMap(container, route) {
       doubleClickZoom: false,
       boxZoom: false,
       keyboard: false,
-      attributionControl: false, // Keep the UI clean for small cards
+      attributionControl: false,
     });
 
     L.tileLayer(
@@ -601,15 +590,12 @@ async function initRunCardMap(container, route) {
       weight: 4,
     }).addTo(cardMap);
 
-    // This check is crucial. It ensures we only try to fit the map
-    // to the route if the route has actual, valid coordinates.
     if (polyline.getBounds().isValid()) {
       cardMap.fitBounds(polyline.getBounds().pad(0.1));
     }
 
-    activeCardMaps.push(cardMap); // Track map instance for later destruction
+    activeCardMaps.push(cardMap);
 
-    // Final check to ensure size is correct after initialization.
     requestAnimationFrame(() => {
       if (cardMap) cardMap.invalidateSize();
     });
@@ -642,7 +628,7 @@ async function fetchWeatherForRun(latitude, longitude) {
     const data = await response.json();
     return {
       temp: data.main.temp,
-      description: data.weather[0].main, // e.g., "Clouds", "Clear"
+      description: data.weather[0].main,
     };
   } catch (error) {
     console.error("Error fetching weather:", error);
@@ -660,7 +646,7 @@ function getWeatherIcon(description) {
     Clear: sunnyOutline,
     Cloudy: cloudOutline,
   };
-  return iconMap[description] || partlySunnyOutline; // Default icon for mist, fog, etc.
+  return iconMap[description] || partlySunnyOutline;
 }
 
 /* Map Methods */
@@ -776,7 +762,6 @@ async function addShoe() {
   const brand = newShoeBrand.value.trim();
   const model = newShoeModel.value.trim();
 
-  // --- VALIDATION START ---
   if (!brand || !model) {
     return presentToast("Please enter both a brand and a model.");
   }
@@ -785,7 +770,6 @@ async function addShoe() {
   }
   const sanitizedBrand = validators.sanitizeInput(brand);
   const sanitizedModel = validators.sanitizeInput(model);
-  // --- VALIDATION END ---
 
   try {
     await addDoc(collection(db, "shoes"), {
@@ -899,33 +883,28 @@ async function handleSummaryModalDismiss() {
   const shoeId = selectedShoeForRun.value;
   let description = runSummaryDescription.value.trim();
 
-  // Save shoe info if selected
   if (shoeId && runId) {
     await updateRunAndShoeStats(runId, lastRunSummary.value, shoeId);
   }
 
-  // --- VALIDATION & SANITIZATION for description ---
   if (description) {
     if (description.length > 500) {
       await presentToast("Description must be under 500 characters.");
-      // Don't close the modal if validation fails
+
       return;
     }
     description = validators.sanitizeInput(description);
   }
-  // --- END VALIDATION ---
 
-  // Save description if entered
   if (description && runId) {
     try {
       const runDocRef = doc(db, "runs", runId);
       await updateDoc(runDocRef, { description });
 
-      // Update local state for immediate UI feedback
       const runIndex = runHistory.value.findIndex((r) => r.id === runId);
       if (runIndex > -1) {
         runHistory.value[runIndex].description = description;
-        // If it's the latest run, update stats which includes the description
+
         if (runIndex === 0) {
           await updateUserStatsInFirestore();
         }
@@ -937,7 +916,6 @@ async function handleSummaryModalDismiss() {
     }
   }
 
-  // Reset state and close modal
   isSummaryModalVisible.value = false;
   selectedShoeForRun.value = null;
   runSummaryDescription.value = "";
@@ -985,18 +963,16 @@ function startWorkout() {
         // --- MAP UPDATE LOGIC ---
         if (map) {
           if (!userMarker) {
-            // First time getting location: create marker, polyline, and center map
             userMarker = L.marker(latlng).addTo(map);
             routePolyline = L.polyline([latlng], {
               color: "#fbbf24",
               weight: 6.5,
             }).addTo(map);
-            map.setView(latlng, 16); // Zoom in on the user
+            map.setView(latlng, 16);
           } else {
-            // Subsequent updates: move marker and extend polyline
             userMarker.setLatLng(latlng);
             routePolyline.addLatLng(latlng);
-            map.panTo(latlng); // Smoothly move the map to keep the marker in view
+            map.panTo(latlng);
           }
         }
       },
@@ -1065,7 +1041,6 @@ async function logRun() {
   if (navigator.vibrate) navigator.vibrate(50);
   if (!user.value) return presentToast("Please log in.", "danger");
 
-  // --- VALIDATION START ---
   const dist = parseFloat(distanceInput.value);
   const timeInSeconds =
     (parseInt(hoursInput.value) || 0) * 3600 +
@@ -1085,7 +1060,6 @@ async function logRun() {
     }
     description = validators.sanitizeInput(description);
   }
-  // --- VALIDATION END ---
 
   const newRunData = {
     userId: user.value.uid,
@@ -1108,7 +1082,6 @@ async function logRun() {
     }
     await fetchUserRuns(user.value.uid);
 
-    // Clear inputs on success
     distanceInput.value = null;
     hoursInput.value = null;
     minutesInput.value = null;
@@ -1141,10 +1114,9 @@ async function deleteRun(index) {
           const runToDelete = runHistory.value[index];
           if (runToDelete.id) {
             try {
-              // STEP 1: If a shoe is linked, update its stats by subtracting the run's data.
               if (runToDelete.shoeId) {
                 const shoeDocRef = doc(db, "shoes", runToDelete.shoeId);
-                // Use Firebase's `increment` with negative values to atomically subtract.
+
                 await updateDoc(shoeDocRef, {
                   totalDistance: increment(-runToDelete.distance),
                   totalTime: increment(-runToDelete.time),
@@ -1152,12 +1124,10 @@ async function deleteRun(index) {
                 });
               }
 
-              // STEP 2: Delete the actual run document.
               await deleteDoc(doc(db, "runs", runToDelete.id));
 
-              // STEP 3: Refresh local data to reflect changes in the UI.
-              await fetchUserRuns(user.value.uid); // Recalculates user's total stats.
-              await fetchUserShoes(user.value.uid); // Refreshes shoe list with updated mileage.
+              await fetchUserRuns(user.value.uid);
+              await fetchUserShoes(user.value.uid);
 
               await presentToast("Run deleted successfully.", "success");
             } catch (error) {
@@ -1182,7 +1152,7 @@ async function deleteRun(index) {
 // Hold To Stop Button Methods
 
 function startHoldStop() {
-  if (isHoldingStop.value) return; // Prevent multiple triggers
+  if (isHoldingStop.value) return;
   isHoldingStop.value = true;
   holdProgress.value = 0;
 
@@ -1231,47 +1201,39 @@ function cancelHoldStop() {
 // --- FIREBASE METHODS --
 async function handleSignIn() {
   authMessage.value = "";
-  // --- VALIDATION START ---
+
   if (!validators.isValidEmail(email.value)) {
     return (authMessage.value = "Please enter a valid email address.");
   }
   if (!password.value) {
     return (authMessage.value = "Please enter your password.");
   }
-  // --- VALIDATION END ---
 
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    // Successful sign-in, onAuthStateChanged will handle UI updates.
   } catch (error) {
     console.error("Sign-in error:", error.code, error.message);
 
-    // This is the key logic: check for the specific error code.
     if (error.code === "auth/invalid-credential") {
       try {
-        // If the credential is bad, check what methods ARE available for this email.
         const methods = await fetchSignInMethodsForEmail(auth, email.value);
 
-        // If the array of methods includes 'google.com', we know what's happening.
         if (methods.includes("google.com")) {
           authMessage.value =
             "This email is linked with a Google account. Please use the 'Sign In with Google' button.";
-          // Optionally, show a more user-friendly toast notification.
+
           presentToast(
             "You've previously signed in with Google. Please use that option.",
             "primary"
           );
         } else {
-          // If Google is not a method, then it was just a regular wrong password.
           authMessage.value = "Invalid email or password.";
         }
       } catch (fetchError) {
-        // This catch handles cases where the email doesn't exist at all.
         console.error("Error fetching sign-in methods:", fetchError);
         authMessage.value = "Invalid email or password.";
       }
     } else {
-      // Handle other potential errors (e.g., network issues)
       authMessage.value = `Error signing in: ${error.message}`;
     }
   }
@@ -1280,7 +1242,6 @@ async function handleSignIn() {
 async function handleSignUp() {
   authMessage.value = "";
 
-  // --- VALIDATION START ---
   const sanitizedDisplayName = validators.sanitizeInput(
     displayName.value.trim()
   );
@@ -1303,7 +1264,6 @@ async function handleSignUp() {
     return (authMessage.value =
       "Password must be at least 8 characters long and contain one letter and one number.");
   }
-  // --- VALIDATION END ---
 
   try {
     const userCredential = await createUserWithEmailAndPassword(
@@ -1313,12 +1273,10 @@ async function handleSignUp() {
     );
     const newUser = userCredential.user;
     await setDoc(doc(db, "users", newUser.uid), {
-      displayName: sanitizedDisplayName, // Use sanitized version
+      displayName: sanitizedDisplayName,
       displayName_lowercase: sanitizedDisplayName.toLowerCase(),
       email: email.value.toLowerCase(),
     });
-
-    //window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing up: ${error.message}`;
   }
@@ -1333,7 +1291,7 @@ async function handleForgotPassword() {
   const alert = await alertController.create({
     header: "Reset Password",
     message: "Please enter your email to receive a password reset link.",
-    cssClass: "custom-alert", // This uses your existing alert styling
+    cssClass: "custom-alert",
     inputs: [
       {
         name: "email",
@@ -1352,7 +1310,7 @@ async function handleForgotPassword() {
           const email = data.email.trim();
           if (!email || !validators.isValidEmail(email)) {
             presentToast("Please enter a valid email address.", "danger");
-            return false; // Prevents the alert from closing on invalid input
+            return false;
           }
 
           try {
@@ -1363,7 +1321,7 @@ async function handleForgotPassword() {
             );
           } catch (error) {
             console.error("Password reset error:", error);
-            // It's more secure to show a generic message whether the user exists or not.
+
             presentToast(
               "If an account exists for that email, a reset link has been sent.",
               "warning"
@@ -1505,7 +1463,7 @@ function setupSocialListeners() {
 
       if (change.type === "added") {
         const statsDocRef = doc(db, "userStats", friendUid);
-        // Add the stats listener's unsubscribe function to our array
+        // Add the stats listener's unsubscribe function to array
         const statsUnsubscribe = onSnapshot(statsDocRef, (statsDoc) => {
           const statsData = statsDoc.data() || {
             totalDistance: 0,
@@ -1526,10 +1484,10 @@ function setupSocialListeners() {
             });
           }
         });
-        activeListeners.push(statsUnsubscribe); // Track it!
+        activeListeners.push(statsUnsubscribe);
 
         const userDocRef = doc(db, "users", friendUid);
-        // Add the user data listener's unsubscribe function to our array
+        // Add the user data listener's unsubscribe function to array
         const userUnsubscribe = onSnapshot(userDocRef, (userDoc) => {
           const userData = userDoc.data();
           const existingFriendIndex = friends.value.findIndex(
@@ -1539,19 +1497,15 @@ function setupSocialListeners() {
             friends.value[existingFriendIndex].photoURL = userData.photoURL;
           }
         });
-        activeListeners.push(userUnsubscribe); // Track it!
+        activeListeners.push(userUnsubscribe);
       }
 
       if (change.type === "removed") {
         friends.value = friends.value.filter((f) => f.uid !== friendUid);
-        // Note: For a more robust solution, you'd also want to find and
-        // remove the specific listeners for the unfollowed user.
-        // But for the logout bug, the global cleanup is sufficient.
       }
     });
   });
 
-  // Also track the main listener itself
   activeListeners.push(mainUnsubscribe);
 }
 
@@ -1563,7 +1517,6 @@ async function handlePictureUpload(event) {
   const file = event.target.files[0];
   if (!file || !user.value) return;
 
-  // --- VALIDATION START ---
   const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
   if (!allowedTypes.includes(file.type)) {
     return presentToast("Invalid file type. Please upload a JPG, PNG, or GIF.");
@@ -1572,7 +1525,6 @@ async function handlePictureUpload(event) {
   if (file.size > maxSizeInMB * 1024 * 1024) {
     return presentToast(`File is too large. Maximum size is ${maxSizeInMB}MB.`);
   }
-  // --- VALIDATION END ---
 
   const filePath = `profile-pictures/${user.value.uid}`;
   const fileRef = storageRef(storage, filePath);
@@ -1595,7 +1547,7 @@ async function handlePictureUpload(event) {
 
 async function updateUsername() {
   const newName = newDisplayName.value.trim();
-  // --- VALIDATION START ---
+
   if (!newName) return;
   if (newName === displayName.value) return;
   if (newName.length < 3 || newName.length > 20) {
@@ -1607,7 +1559,6 @@ async function updateUsername() {
     );
   }
   const sanitizedName = validators.sanitizeInput(newName);
-  // --- VALIDATION END ---
 
   const usersRef = collection(db, "users");
   const q = query(
@@ -1663,11 +1614,8 @@ async function handleGoogleSignIn() {
         photoURL: user.photoURL,
       });
     }
-
-    // The onAuthStateChanged listener will now handle the UI update automatically.
-    // We do NOT need to reload the page here.
   } catch (error) {
-    // Add specific checks for common popup errors
+    // specific checks for common popup errors
     if (error.code === "auth/popup-blocked") {
       authMessage.value =
         "Popup was blocked by the browser. Please allow popups for this site.";
@@ -1707,10 +1655,9 @@ const handleScroll = () => {
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
     if (authUser) {
-      // --- THE FIX ---
-      // 1. Close the modal IMMEDIATELY for instant UI feedback.
-      closeAuthModal(); // <--- ADD THIS LINE
-      isLoading.value = true; // Show the main loading overlay.
+      // 1. Close the modal for instant UI feedback.
+      closeAuthModal();
+      isLoading.value = true;
 
       try {
         // 2. Set the user state and fetch all data in the background.
@@ -1743,7 +1690,6 @@ onMounted(() => {
         isLoading.value = false;
       }
     } else {
-      // This is the sign-out logic, it remains mostly the same.
       isLoading.value = true;
       user.value = null;
       displayName.value = "";
@@ -1752,7 +1698,7 @@ onMounted(() => {
       friends.value = [];
       userShoes.value = [];
       recalculateStatsFromHistory();
-      cleanupListeners(); // This is from our previous fix
+      cleanupListeners();
       if (scrollEl) {
         scrollEl.removeEventListener("scroll", handleScroll);
         scrollEl = null;
@@ -1895,8 +1841,6 @@ onUnmounted(() => {
           </button>
         </div>
       </ion-content>
-
-      <!-- ALL MODALS REMAIN IN THE PARENT App.vue COMPONENT -->
     </template>
     <ion-modal
       :is-open="isAuthModalVisible"
@@ -2551,11 +2495,9 @@ onUnmounted(() => {
       </ion-header>
       <ion-content class="ion-padding">
         <ion-card class="styled-card" v-if="selectedShoeDetails">
-          <ion-card-header>
-            <ion-card-title class="summary-title">
-              {{ selectedShoeDetails.brandName }}
-            </ion-card-title>
-            <p class="ion-text-center">{{ selectedShoeDetails.modelName }}</p>
+          <ion-card-header class="shoe-detail-header">
+            <p class="shoe-model-name">{{ selectedShoeDetails.modelName }}</p>
+            <h2 class="shoe-brand-name">{{ selectedShoeDetails.brandName }}</h2>
           </ion-card-header>
           <ion-card-content>
             <ion-grid class="summary-stats-grid">
@@ -2719,8 +2661,8 @@ ion-content {
 }
 
 :deep(.styled-card ion-card-title) {
-  color: #ffffff !important; /* Use !important to ensure this rule wins */
-  font-weight: 600; /* Let's make it a bit bolder too */
+  color: #ffffff !important;
+  font-weight: 600;
 }
 :deep(.no-data-text) {
   font-style: italic;
@@ -2746,7 +2688,6 @@ ion-content {
   text-align: right;
   margin-top: 0.5rem;
 }
-/* Add these new styles inside the <style scoped> tag in src/App.vue */
 
 /* Run Summary Modal Styles */
 .summary-logo-icon {
@@ -2795,7 +2736,7 @@ ion-content {
 
 .weather-icon {
   font-size: 1.8rem;
-  color: #fbbf24; /* Yellow to match theme */
+  color: #fbbf24;
 }
 
 .weather-temp {
@@ -2909,7 +2850,7 @@ ion-content {
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--ion-color-primary);
-  flex-shrink: 0; /* Prevents the image from shrinking */
+  flex-shrink: 0;
 }
 :deep(.profile-info) {
   flex-grow: 1;
@@ -2937,7 +2878,7 @@ ion-content {
 :deep(.run-history-item) {
   padding-top: 1rem;
   padding-bottom: 1rem;
-  /* This border is key to separating the runs */
+
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: transparent;
 }
@@ -2959,8 +2900,8 @@ ion-content {
 
 :deep(.styled-card ion-list) {
   --ion-background-color: transparent;
-  background: transparent; /* Fallback for older browsers */
-  padding: 0; /* Remove default list padding */
+  background: transparent;
+  padding: 0;
 }
 /* Footer & Navigation */
 .footer-tabs {
@@ -3173,21 +3114,39 @@ ion-spinner {
 
 /* Forgot Password Link */
 .forgot-password-link {
-  text-align: center; /* Changed from right to center */
+  text-align: center;
   margin-top: 0.25rem;
   margin-bottom: 1.25rem;
 }
 
 .forgot-password-link a {
-  font-size: 0.9rem; /* Slightly larger for better tapping */
-  color: #fbbf24; /* Yellow to match the other links */
-  font-weight: 600; /* Bolded to match */
+  font-size: 0.9rem;
+  color: #fbbf24;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: none;
   transition: color 0.2s ease-in-out;
 }
 
 .forgot-password-link a:hover {
-  color: #ffffff; /* Change hover color to white */
+  color: #ffffff;
+}
+/* Shoe Detail Modal Header Styles */
+.shoe-detail-header {
+  text-align: center;
+}
+
+.shoe-brand-name {
+  font-size: 1.2rem;
+  font-weight: 600; /* Bolder for prominence */
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.shoe-model-name {
+  font-size: 1.1rem;
+  font-weight: 400; /* Normal weight */
+  color: #ffffff; /* Sets model name to pure white */
+  margin: 0;
 }
 </style>
