@@ -45,10 +45,6 @@ import {
   personOutline,
   mailOutline,
   lockClosedOutline,
-  chevronForward,
-  chevronBack,
-  chevronDown,
-  walk,
   settingsOutline,
   footsteps,
   sunnyOutline,
@@ -91,6 +87,11 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { storage } from "./firebase-config.js";
+
+// Import the new components
+import HomePage from "./components/HomePage.vue";
+import SocialPage from "./components/SocialPage.vue";
+import ProfilePage from "./components/ProfilePage.vue";
 
 // --- NEW: Input Validation and Sanitization Utilities ---
 const validators = {
@@ -161,7 +162,7 @@ const currentPage = ref("home");
 const displayName = ref("");
 const friendUsername = ref("");
 const friends = ref([]);
-let friendsListenerUnsubscribe = null;
+let activeListeners = [];
 const visibleRunsCount = ref(2);
 const isFollowModalVisible = ref(false);
 const isTracking = ref(false);
@@ -220,6 +221,45 @@ const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA";
 
 // --- COMPUTED ---
+const setMapRef = (key, el) => {
+  if (el) {
+    // This function will initialize the map
+    const initialize = () => {
+      // Find the route data associated with this map key
+      const type = key.startsWith("run-") ? "run" : "friend";
+      const id = key.substring(type.length + 1);
+      let routeData = null;
+
+      if (type === "run") {
+        const run = runHistory.value.find((r) => r.id === id);
+        if (run) routeData = run.route;
+      } else if (type === "friend") {
+        const friend = friends.value.find((f) => f.uid === id);
+        if (friend) routeData = friend.stats?.lastRun?.route;
+      }
+
+      // If we have data and the map isn't already there, create it
+      if (routeData && routeData.length > 0 && !el._leaflet_id) {
+        initRunCardMap(el, routeData);
+      }
+    };
+
+    // The ResizeObserver is the key. It waits for the element to have a size.
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        // As soon as the container has a width, we know it's visible.
+        if (entry.contentRect.width > 0) {
+          initialize();
+          // Once the map is initialized, we don't need to observe it anymore.
+          observer.unobserve(el);
+        }
+      }
+    });
+
+    observer.observe(el);
+  }
+};
+
 const currentLevel = computed(() => {
   for (let i = 0; i < levels.length; i++) {
     if (xp.value <= levels[i].xp) return { ...levels[i], index: i };
@@ -328,40 +368,6 @@ watch(isLiveTrackingModalVisible, (isNowVisible) => {
   }
 });
 
-watch(currentPage, (newPage) => {
-  // Always clean up maps from the old page to prevent memory leaks
-  destroyCardMaps();
-
-  // If the new page is one that is supposed to have maps, create them
-  if (newPage === "profile" || newPage === "social") {
-    createVisibleCardMaps();
-  }
-});
-
-// This watcher handles DATA CHANGES for the profile page
-watch(displayedRuns, () => {
-  // If the data changes WHILE we are on the profile page (e.g., delete a run),
-  // recreate the maps to match the new data.
-  if (currentPage.value === "profile") {
-    destroyCardMaps();
-    createVisibleCardMaps();
-  }
-});
-
-// This watcher handles DATA CHANGES for the social feed
-watch(
-  sortedFriends,
-  () => {
-    // If the data changes WHILE we are on the social page (e.g., new run from a friend),
-    // recreate the maps.
-    if (currentPage.value === "social") {
-      destroyCardMaps();
-      createVisibleCardMaps();
-    }
-  },
-  { deep: true }
-);
-
 watch(isSummaryModalVisible, (isNowVisible) => {
   if (isNowVisible) {
     // Apply the same logic for the summary map
@@ -372,6 +378,11 @@ watch(isSummaryModalVisible, (isNowVisible) => {
 });
 
 // --- METHODS ---
+function cleanupListeners() {
+  activeListeners.forEach((unsubscribe) => unsubscribe());
+  activeListeners = [];
+}
+
 function getLevelForXp(friendXp) {
   if (typeof friendXp !== "number") friendXp = 0;
   for (let i = 0; i < levels.length; i++) {
@@ -557,13 +568,6 @@ async function openUserProfileModal(friend) {
   }
 }
 
-/* Card Map Methods */
-const setMapRef = (key, el) => {
-  if (el) {
-    mapRefs.value[key] = el;
-  }
-};
-
 async function initRunCardMap(container, route) {
   // Guard against re-initialization and ensure container exists.
   if (!container || container._leaflet_id) {
@@ -620,30 +624,6 @@ function destroyCardMaps() {
   });
   activeCardMaps = [];
   mapRefs.value = {};
-}
-
-function createVisibleCardMaps() {
-  setTimeout(() => {
-    if (currentPage.value === "profile") {
-      displayedRuns.value.forEach((run) => {
-        if (run.route?.length > 0) {
-          const mapContainer = mapRefs.value["run-" + run.id];
-          if (mapContainer && !mapContainer._leaflet_id) {
-            initRunCardMap(mapContainer, run.route);
-          }
-        }
-      });
-    } else if (currentPage.value === "social") {
-      sortedFriends.value.forEach((friend) => {
-        if (friend.stats?.lastRun?.route?.length > 0) {
-          const mapContainer = mapRefs.value["friend-" + friend.uid];
-          if (mapContainer && !mapContainer._leaflet_id) {
-            initRunCardMap(mapContainer, friend.stats.lastRun.route);
-          }
-        }
-      });
-    }
-  }, 100); // A 100ms delay is usually plenty of time for the UI to settle.
 }
 
 /* Weather Methods */
@@ -1260,7 +1240,7 @@ async function handleSignIn() {
 
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
-    window.location.reload();
+    //window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing in: ${error.message}`;
   }
@@ -1307,17 +1287,14 @@ async function handleSignUp() {
       email: email.value.toLowerCase(),
     });
 
-    window.location.reload();
+    //window.location.reload();
   } catch (error) {
     authMessage.value = `Error signing up: ${error.message}`;
   }
 }
 
 async function handleSignOut() {
-  if (friendsListenerUnsubscribe) {
-    friendsListenerUnsubscribe();
-    friendsListenerUnsubscribe = null;
-  }
+  cleanupListeners();
   await signOut(auth);
 }
 
@@ -1438,16 +1415,19 @@ async function recalculateStatsFromHistory() {
 }
 
 function setupSocialListeners() {
-  if (!user.value || friendsListenerUnsubscribe) return;
+  cleanupListeners(); // Clean up old listeners before starting new ones
+  if (!user.value) return;
+
   const q = query(collection(db, `users/${user.value.uid}/friends`));
-  friendsListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+  const mainUnsubscribe = onSnapshot(q, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       const friendUid = change.doc.id;
       const friendData = change.doc.data();
 
       if (change.type === "added") {
         const statsDocRef = doc(db, "userStats", friendUid);
-        onSnapshot(statsDocRef, (statsDoc) => {
+        // Add the stats listener's unsubscribe function to our array
+        const statsUnsubscribe = onSnapshot(statsDocRef, (statsDoc) => {
           const statsData = statsDoc.data() || {
             totalDistance: 0,
             totalTime: 0,
@@ -1467,9 +1447,11 @@ function setupSocialListeners() {
             });
           }
         });
+        activeListeners.push(statsUnsubscribe); // Track it!
 
         const userDocRef = doc(db, "users", friendUid);
-        onSnapshot(userDocRef, (userDoc) => {
+        // Add the user data listener's unsubscribe function to our array
+        const userUnsubscribe = onSnapshot(userDocRef, (userDoc) => {
           const userData = userDoc.data();
           const existingFriendIndex = friends.value.findIndex(
             (f) => f.uid === friendUid
@@ -1478,13 +1460,20 @@ function setupSocialListeners() {
             friends.value[existingFriendIndex].photoURL = userData.photoURL;
           }
         });
+        activeListeners.push(userUnsubscribe); // Track it!
       }
 
       if (change.type === "removed") {
         friends.value = friends.value.filter((f) => f.uid !== friendUid);
+        // Note: For a more robust solution, you'd also want to find and
+        // remove the specific listeners for the unfollowed user.
+        // But for the logout bug, the global cleanup is sufficient.
       }
     });
   });
+
+  // Also track the main listener itself
+  activeListeners.push(mainUnsubscribe);
 }
 
 function triggerFileUpload() {
@@ -1578,7 +1567,6 @@ async function updateUsername() {
 async function handleGoogleSignIn() {
   authMessage.value = "";
   const provider = new GoogleAuthProvider();
-
   provider.setCustomParameters({ prompt: "select_account" });
 
   try {
@@ -1597,10 +1585,24 @@ async function handleGoogleSignIn() {
       });
     }
 
-    window.location.reload();
+    // The onAuthStateChanged listener will now handle the UI update automatically.
+    // We do NOT need to reload the page here.
   } catch (error) {
-    console.error("Google Sign-In Error:", error);
-    authMessage.value = `Error with Google Sign-In: ${error.message}`;
+    // Add specific checks for common popup errors
+    if (error.code === "auth/popup-blocked") {
+      authMessage.value =
+        "Popup was blocked by the browser. Please allow popups for this site.";
+      await presentToast(
+        "Popup was blocked by the browser. Please allow popups.",
+        "danger"
+      );
+    } else if (error.code === "auth/popup-closed-by-user") {
+      authMessage.value = "Sign-in window was closed before completing.";
+      await presentToast("Sign-in cancelled.", "warning");
+    } else {
+      console.error("Google Sign-In Error:", error);
+      authMessage.value = `Error with Google Sign-In: ${error.message}`;
+    }
   }
 }
 
@@ -1625,25 +1627,45 @@ const handleScroll = () => {
 // --- LIFECYCLE HOOKS ---
 onMounted(() => {
   onAuthStateChanged(auth, async (authUser) => {
-    isLoading.value = true;
     if (authUser) {
-      user.value = authUser;
-      const userDoc = await getDoc(doc(db, "users", authUser.uid));
-      if (userDoc.exists()) {
-        displayName.value = userDoc.data().displayName;
-        photoURL.value = userDoc.data().photoURL;
-      }
-      closeAuthModal();
-      await fetchUserRuns(authUser.uid);
-      await fetchUserShoes(authUser.uid);
-      await setupSocialListeners();
+      // --- THE FIX ---
+      // 1. Close the modal IMMEDIATELY for instant UI feedback.
+      closeAuthModal(); // <--- ADD THIS LINE
+      isLoading.value = true; // Show the main loading overlay.
 
-      await nextTick();
-      if (contentRef.value) {
-        scrollEl = await contentRef.value.$el.getScrollElement();
-        scrollEl.addEventListener("scroll", handleScroll);
+      try {
+        // 2. Set the user state and fetch all data in the background.
+        user.value = authUser;
+        const userDoc = await getDoc(doc(db, "users", authUser.uid));
+        if (userDoc.exists()) {
+          displayName.value = userDoc.data().displayName;
+          photoURL.value = userDoc.data().photoURL;
+        }
+
+        // Fetch primary data
+        await fetchUserRuns(authUser.uid);
+        await fetchUserShoes(authUser.uid);
+
+        // Setup listeners and UI effects
+        await setupSocialListeners();
+        await nextTick();
+        if (contentRef.value) {
+          scrollEl = await contentRef.value.$el.getScrollElement();
+          scrollEl.addEventListener("scroll", handleScroll);
+        }
+      } catch (error) {
+        console.error("Failed to load user data after login:", error);
+        await presentToast(
+          "There was an error loading your profile.",
+          "danger"
+        );
+      } finally {
+        // 3. ALWAYS turn off the loading screen when all operations are complete.
+        isLoading.value = false;
       }
     } else {
+      // This is the sign-out logic, it remains mostly the same.
+      isLoading.value = true;
       user.value = null;
       displayName.value = "";
       photoURL.value = null;
@@ -1651,17 +1673,14 @@ onMounted(() => {
       friends.value = [];
       userShoes.value = [];
       recalculateStatsFromHistory();
-      openAuthModal();
-      if (friendsListenerUnsubscribe) {
-        friendsListenerUnsubscribe();
-        friendsListenerUnsubscribe = null;
-      }
+      cleanupListeners(); // This is from our previous fix
       if (scrollEl) {
         scrollEl.removeEventListener("scroll", handleScroll);
         scrollEl = null;
       }
+      openAuthModal();
+      isLoading.value = false;
     }
-    isLoading.value = false;
   });
 });
 
@@ -1699,7 +1718,6 @@ onUnmounted(() => {
         </ion-toolbar>
       </ion-header>
 
-      <!-- MODIFIED: Added ref to IonContent -->
       <ion-content :fullscreen="true" ref="contentRef">
         <img
           v-if="photoURL && currentPage === 'home'"
@@ -1715,442 +1733,61 @@ onUnmounted(() => {
           <p class="ion-margin-top welcome-text">Hello, {{ displayName }}!</p>
         </div>
 
-        <!-- Home Page -->
-        <Transition name="fade">
-          <div v-if="currentPage === 'home'" class="ion-padding">
-            <!-- Overall Stats Card (Redesigned) -->
-            <ion-card class="styled-card">
-              <ion-card-header>
-                <ion-card-title>All-Time Stats</ion-card-title>
-              </ion-card-header>
-              <ion-card-content>
-                <ion-grid class="summary-stats-grid">
-                  <ion-row>
-                    <ion-col size="6" class="summary-stat-item">
-                      <ion-icon :icon="rocket" color="primary"></ion-icon>
-                      <p class="stat-label">Total Distance</p>
-                      <p class="stat-value small">
-                        {{ animatedTotalDistance.toFixed(2) }}
-                        <span class="stat-unit">mi</span>
-                      </p>
-                    </ion-col>
-                    <ion-col size="6" class="summary-stat-item">
-                      <ion-icon :icon="timeOutline" color="primary"></ion-icon>
-                      <p class="stat-label">Total Time</p>
-                      <p class="stat-value small">
-                        {{ formatTime(animatedTotalTime, true) }}
-                      </p>
-                    </ion-col>
-                  </ion-row>
-                </ion-grid>
-                <div class="ion-margin-top">
-                  <div class="level-display">
-                    <span class="level-emoji">{{ currentLevel.emoji }}</span>
-                    <span>Level: {{ currentLevel.name }}</span>
-                    <span style="margin-left: auto; font-size: 1.2rem"
-                      >{{ Math.floor(animatedXp) }} XP</span
-                    >
-                  </div>
-                  <ion-progress-bar
-                    :value="progress"
-                    color="warning"
-                    class="ion-margin-top"
-                  ></ion-progress-bar>
-                  <p class="xp-text">
-                    Next Level:
-                    {{ currentLevel.xp === Infinity ? "Max" : currentLevel.xp }}
-                    XP
-                  </p>
-                </div>
-              </ion-card-content>
-            </ion-card>
+        <!-- Dynamically render the current page component -->
+        <Transition name="fade" mode="out-in">
+          <div :key="currentPage">
+            <HomePage
+              v-if="currentPage === 'home'"
+              :animatedTotalDistance="animatedTotalDistance"
+              :animatedTotalTime="animatedTotalTime"
+              :animatedXp="animatedXp"
+              :currentLevel="currentLevel"
+              :progress="progress"
+              :formatTime="formatTime"
+              :weeklyChartData="weeklyChartData"
+              :weeklyTotalDistance="weeklyTotalDistance"
+              :currentWeekStart="currentWeekStart"
+              :currentWeekEnd="currentWeekEnd"
+              :currentWeekOffset="currentWeekOffset"
+              @open-run-action-sheet="openRunActionSheet"
+              @go-to-previous-week="goToPreviousWeek"
+              @go-to-next-week="goToNextWeek"
+            />
 
-            <!-- Reactive Run Button -->
-            <ion-card class="styled-card run-action-card">
-              <ion-card-content>
-                <ion-button
-                  expand="block"
-                  class="yellow-button run-button"
-                  @click="openRunActionSheet"
-                >
-                  <ion-icon :icon="walk" slot="start"></ion-icon>
-                  New Run
-                </ion-button>
-              </ion-card-content>
-            </ion-card>
+            <SocialPage
+              v-if="currentPage === 'social'"
+              :friends="friends"
+              :sortedFriends="sortedFriends"
+              :formatTime="formatTime"
+              :getLevelForXp="getLevelForXp"
+              :getProgressForXp="getProgressForXp"
+              :setMapRef="setMapRef"
+              @open-follow-modal="openFollowModal"
+              @open-user-profile-modal="openUserProfileModal"
+              @unfollow-user="unfollowUser"
+            />
 
-            <!-- Weekly Activity Chart (Corrected Layout) -->
-            <ion-card class="styled-card">
-              <ion-card-header class="weekly-header">
-                <ion-card-title>Weekly Activity</ion-card-title>
-                <!-- Button container -->
-                <div class="week-nav-buttons">
-                  <ion-button fill="clear" @click="goToPreviousWeek">
-                    <ion-icon slot="icon-only" :icon="chevronBack"></ion-icon>
-                  </ion-button>
-                  <ion-button
-                    fill="clear"
-                    @click="goToNextWeek"
-                    :disabled="currentWeekOffset === 0"
-                  >
-                    <ion-icon
-                      slot="icon-only"
-                      :icon="chevronForward"
-                    ></ion-icon>
-                  </ion-button>
-                </div>
-              </ion-card-header>
-
-              <ion-card-content>
-                <!-- Date is now below the header -->
-                <h3 class="week-dates">
-                  {{ currentWeekStart.toLocaleDateString() }} -
-                  {{ new Date(currentWeekEnd - 1).toLocaleDateString() }}
-                </h3>
-
-                <p class="weekly-total">
-                  Total: {{ weeklyTotalDistance.toFixed(2) }} mi
-                </p>
-                <div class="chart-container">
-                  <!-- Chart Bars -->
-                  <div
-                    v-for="data in weeklyChartData"
-                    :key="data.day"
-                    class="chart-bar-wrapper"
-                  >
-                    <div
-                      class="chart-bar"
-                      :style="{ height: data.height + '%' }"
-                    >
-                      <span v-if="data.distance > 0" class="bar-value">
-                        {{ data.distance.toFixed(1) }}
-                      </span>
-                    </div>
-                    <p class="chart-label">{{ data.day }}</p>
-                  </div>
-                </div>
-              </ion-card-content>
-            </ion-card>
-          </div>
-        </Transition>
-
-        <!-- Social Page -->
-        <Transition name="fade">
-          <div v-if="currentPage === 'social'" class="ion-padding">
-            <ion-button
-              expand="block"
-              @click="openFollowModal"
-              class="ion-margin-bottom yellow-button"
-            >
-              <ion-icon slot="start" :icon="people"></ion-icon>
-              Follow a New User
-            </ion-button>
-
-            <div v-if="friends.length > 0" class="friend-list">
-              <div
-                v-for="friend in sortedFriends"
-                :key="friend.uid"
-                class="friend-card-refined styled-card"
-              >
-                <!-- Card Header -->
-                <div class="friend-main-info">
-                  <img
-                    :src="friend.photoURL || '/default-avatar.png'"
-                    class="friend-avatar"
-                    @click="openUserProfileModal(friend)"
-                  />
-                  <div
-                    class="friend-details"
-                    @click="openUserProfileModal(friend)"
-                  >
-                    <h2 class="friend-name">{{ friend.displayName }}</h2>
-                    <div v-if="friend.stats" class="friend-level">
-                      <span class="level-icon">{{
-                        getLevelForXp(friend.stats.xp).emoji
-                      }}</span>
-                      <span>{{ getLevelForXp(friend.stats.xp).name }}</span>
-                    </div>
-                  </div>
-                  <ion-button
-                    fill="clear"
-                    color="danger"
-                    size="small"
-                    class="unfollow-button"
-                    @click="unfollowUser(friend)"
-                  >
-                    <ion-icon slot="icon-only" :icon="trash"></ion-icon>
-                  </ion-button>
-                </div>
-
-                <!-- Progress Bar -->
-                <div v-if="friend.stats" class="friend-progress">
-                  <ion-progress-bar
-                    :value="getProgressForXp(friend.stats.xp)"
-                    color="warning"
-                  ></ion-progress-bar>
-                </div>
-
-                <!-- Latest Run -->
-                <div class="friend-latest-run">
-                  <h3 class="section-title">Latest Run</h3>
-                  <p
-                    v-if="friend.stats?.lastRun?.date"
-                    class="latest-run-date-subtitle"
-                  >
-                    {{
-                      new Date(friend.stats.lastRun.date).toLocaleDateString(
-                        "en-US",
-                        { year: "numeric", month: "2-digit", day: "2-digit" }
-                      )
-                    }}
-                  </p>
-                  <!-- MAP CONTAINER-->
-                  <div
-                    v-if="
-                      friend.stats?.lastRun?.route &&
-                      friend.stats.lastRun.route.length > 0
-                    "
-                    :ref="(el) => setMapRef('friend-' + friend.uid, el)"
-                    class="run-card-map"
-                  ></div>
-                  <p
-                    v-if="
-                      friend.stats &&
-                      friend.stats.lastRun &&
-                      friend.stats.lastRun.description
-                    "
-                    class="run-description"
-                  >
-                    "{{ friend.stats.lastRun.description }}"
-                  </p>
-                  <div
-                    v-if="friend.stats && friend.stats.lastRun"
-                    class="run-history-stats"
-                  >
-                    <div>
-                      <p class="stat-label">Distance</p>
-                      <p class="stat-value small">
-                        {{ friend.stats.lastRun.distance.toFixed(2) }}
-                        <span class="stat-unit">mi</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Time</p>
-                      <p class="stat-value small">
-                        {{ formatTime(friend.stats.lastRun.time, true) }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Avg Pace</p>
-                      <p class="stat-value small">
-                        {{ formatTime(friend.stats.lastRun.pace) }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div v-else class="ion-text-center">
-                    <p class="no-data-text">No recent runs</p>
-                  </div>
-                </div>
-
-                <!-- Lifetime Stats -->
-                <div class="friend-lifetime-stats">
-                  <div class="lifetime-stat-item">
-                    <ion-icon :icon="rocket" class="stat-icon"></ion-icon>
-                    <span
-                      >{{
-                        friend.stats ? friend.stats.totalDistance.toFixed(2) : 0
-                      }}
-                      mi</span
-                    >
-                  </div>
-                  <div class="lifetime-stat-item">
-                    <ion-icon :icon="timeOutline" class="stat-icon"></ion-icon>
-                    <span>{{
-                      friend.stats
-                        ? formatTime(friend.stats.totalTime, true)
-                        : "00:00:00"
-                    }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Empty State -->
-            <p v-else class="ion-text-center ion-padding">
-              You aren't following anyone yet.
-            </p>
-          </div>
-        </Transition>
-
-        <!-- Profile Page -->
-        <Transition name="fade">
-          <div v-if="currentPage === 'profile'" class="ion-padding">
-            <!-- Main Profile Stats Card -->
-            <ion-card class="styled-card profile-stats-card">
-              <ion-card-content>
-                <div class="profile-header">
-                  <img
-                    :src="photoURL || '/default-avatar.png'"
-                    class="profile-picture-main"
-                  />
-                  <div class="profile-info">
-                    <h2 class="profile-display-name">{{ displayName }}</h2>
-                    <div class="profile-level">
-                      <span class="level-icon">{{ currentLevel.emoji }}</span>
-                      <span
-                        >{{ currentLevel.name }} - {{ Math.floor(xp) }} XP</span
-                      >
-                    </div>
-                  </div>
-                </div>
-                <ion-progress-bar
-                  :value="progress"
-                  color="warning"
-                  class="ion-margin-vertical"
-                ></ion-progress-bar>
-                <div class="profile-lifetime-stats">
-                  <div class="stat-block">
-                    <p class="stat-title">Total Distance</p>
-                    <p class="stat-value">{{ totalDistance.toFixed(2) }} mi</p>
-                  </div>
-                  <div class="stat-block">
-                    <p class="stat-title">Total Time</p>
-                    <p class="stat-value">{{ formatTime(totalTime, true) }}</p>
-                  </div>
-                </div>
-              </ion-card-content>
-            </ion-card>
-
-            <!-- Shoes Card -->
-            <ion-card class="styled-card">
-              <ion-card-header>
-                <ion-card-title>My Shoes</ion-card-title>
-              </ion-card-header>
-              <ion-card-content>
-                <ion-list lines="none" v-if="userShoes.length > 0">
-                  <ion-item
-                    v-for="shoe in userShoes"
-                    :key="shoe.id"
-                    button
-                    @click="openShoeDetailModal(shoe)"
-                    class="run-history-item"
-                  >
-                    <ion-label>
-                      <h2>{{ shoe.brandName }}</h2>
-                      <p>{{ shoe.modelName }}</p>
-                    </ion-label>
-                    <ion-note slot="end" class="shoe-mileage-note"
-                      >{{ shoe.totalDistance.toFixed(2) }} mi</ion-note
-                    >
-                  </ion-item>
-                </ion-list>
-                <p v-else class="ion-text-center no-data-text">
-                  You haven't added any shoes yet.
-                </p>
-                <ion-button
-                  expand="block"
-                  fill="outline"
-                  @click="isAddShoeModalVisible = true"
-                  class="ion-margin-top"
-                  >Add New Shoe</ion-button
-                >
-              </ion-card-content>
-            </ion-card>
-
-            <!-- Run History Card -->
-            <ion-card class="styled-card" v-if="runHistory.length > 0">
-              <ion-card-header>
-                <ion-card-title>Run History</ion-card-title>
-              </ion-card-header>
-              <ion-card-content>
-                <ion-list lines="none">
-                  <div
-                    v-for="(run, index) in displayedRuns"
-                    :key="run.id"
-                    class="run-history-item"
-                  >
-                    <div class="run-history-header">
-                      <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
-                      <ion-button
-                        fill="clear"
-                        color="danger"
-                        size="small"
-                        @click="deleteRun(index)"
-                      >
-                        <ion-icon slot="icon-only" :icon="trash"></ion-icon>
-                      </ion-button>
-                    </div>
-                    <p v-if="run.description" class="run-description">
-                      "{{ run.description }}"
-                    </p>
-                    <!-- MAP CONTAINER -->
-                    <div
-                      v-if="run.route && run.route.length > 0"
-                      :ref="(el) => setMapRef('run-' + run.id, el)"
-                      class="run-card-map"
-                    ></div>
-                    <div class="run-history-stats">
-                      <div>
-                        <p class="stat-label">Distance</p>
-                        <p class="stat-value small">
-                          {{ run.distance.toFixed(2) }}
-                          <span class="stat-unit">mi</span>
-                        </p>
-                      </div>
-                      <div>
-                        <p class="stat-label">Time</p>
-                        <p class="stat-value small">
-                          {{ formatTime(run.time, true) }}
-                        </p>
-                      </div>
-                      <div>
-                        <p class="stat-label">Avg Pace</p>
-                        <p class="stat-value small">
-                          {{ formatTime(run.pace) }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div v-if="run.shoeName" class="run-shoe-tag">
-                      <ion-icon :icon="footsteps"></ion-icon>
-                      <span>{{ run.shoeName }}</span>
-                    </div>
-                    <!-- Run History Shoe Dropdown -->
-                    <div
-                      v-else-if="userShoes.length > 0"
-                      class="add-shoe-to-run-container"
-                    >
-                      <ion-item lines="none" class="add-shoe-select-item">
-                        <ion-select
-                          interface="popover"
-                          placeholder="Add a shoe"
-                          @ionChange="
-                            (event) => addShoeToPastRun(run, event.detail.value)
-                          "
-                        >
-                          <ion-select-option
-                            v-for="shoe in userShoes"
-                            :key="shoe.id"
-                            :value="shoe.id"
-                          >
-                            {{ shoe.brandName }} {{ shoe.modelName }}
-                          </ion-select-option>
-                        </ion-select>
-                      </ion-item>
-                    </div>
-                  </div>
-                </ion-list>
-                <ion-button
-                  v-if="visibleRunsCount < runHistory.length"
-                  @click="showMoreRuns"
-                  expand="block"
-                  fill="outline"
-                  class="ion-margin-top"
-                  >See More</ion-button
-                >
-              </ion-card-content>
-            </ion-card>
+            <ProfilePage
+              v-if="currentPage === 'profile'"
+              :displayName="displayName"
+              :photoURL="photoURL"
+              :currentLevel="currentLevel"
+              :xp="xp"
+              :progress="progress"
+              :totalDistance="totalDistance"
+              :totalTime="totalTime"
+              :formatTime="formatTime"
+              :userShoes="userShoes"
+              :displayedRuns="displayedRuns"
+              :runHistory="runHistory"
+              :visibleRunsCount="visibleRunsCount"
+              :setMapRef="setMapRef"
+              @open-shoe-detail-modal="openShoeDetailModal"
+              @open-add-shoe-modal="isAddShoeModalVisible = true"
+              @delete-run="deleteRun"
+              @add-shoe-to-past-run="addShoeToPastRun"
+              @show-more-runs="showMoreRuns"
+            />
           </div>
         </Transition>
 
@@ -2180,713 +1817,706 @@ onUnmounted(() => {
         </div>
       </ion-content>
 
-      <!-- Auth Modal -->
-      <ion-modal
-        :is-open="isAuthModalVisible"
-        :backdrop-dismiss="false"
-        class="auth-modal"
-      >
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card auth-card">
-            <ion-card-header class="auth-card-header">
-              <img src="/icons/boot.svg" alt="RunItUp Logo" class="auth-logo" />
-              <ion-card-title>{{
-                authView === "signin" ? "Welcome Back" : "Create Account"
-              }}</ion-card-title>
-            </ion-card-header>
+      <!-- ALL MODALS REMAIN IN THE PARENT App.vue COMPONENT -->
+    </template>
+    <ion-modal
+      :is-open="isAuthModalVisible"
+      :backdrop-dismiss="false"
+      class="auth-modal"
+    >
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card auth-card">
+          <ion-card-header class="auth-card-header">
+            <img src="/icons/boot.svg" alt="RunItUp Logo" class="auth-logo" />
+            <ion-card-title>{{
+              authView === "signin" ? "Welcome Back" : "Create Account"
+            }}</ion-card-title>
+          </ion-card-header>
 
-            <ion-card-content>
-              <!-- Username Input (Only for Sign Up) -->
-              <ion-item
-                v-if="authView === 'signup'"
-                lines="none"
-                class="input-with-icon"
-              >
-                <ion-icon :icon="personOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Username"
-                  v-model="displayName"
-                ></ion-input>
-              </ion-item>
-
-              <!-- Email Input -->
-              <ion-item lines="none" class="input-with-icon">
-                <ion-icon :icon="mailOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Email"
-                  type="email"
-                  v-model="email"
-                ></ion-input>
-              </ion-item>
-
-              <!-- Password Input -->
-              <ion-item lines="none" class="input-with-icon">
-                <ion-icon :icon="lockClosedOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Password"
-                  type="password"
-                  v-model="password"
-                ></ion-input>
-              </ion-item>
-
-              <p
-                v-if="authMessage"
-                class="ion-text-center ion-padding-horizontal"
-                style="color: var(--ion-color-warning); font-size: 0.9rem"
-              >
-                {{ authMessage }}
-              </p>
-
-              <ion-button
-                expand="block"
-                @click="authView === 'signin' ? handleSignIn() : handleSignUp()"
-                class="ion-margin-top yellow-button"
-              >
-                {{ authView === "signin" ? "Sign In" : "Create Account" }}
-              </ion-button>
-
-              <!-- GOOGLE SIGN-IN BUTTON -->
-              <div class="auth-separator">
-                <span>OR</span>
-              </div>
-
-              <ion-button
-                expand="block"
-                @click="handleGoogleSignIn"
-                color="light"
-                class="ion-margin-top"
-              >
-                <ion-icon slot="start" src="/assets/google-icon.svg"></ion-icon>
-                Sign In with Google
-              </ion-button>
-
-              <div class="auth-toggle">
-                <p v-if="authView === 'signin'">
-                  Don't have an account?
-                  <a @click="authView = 'signup'">Sign Up</a>
-                </p>
-                <p v-else>
-                  Already have an account?
-                  <a @click="authView = 'signin'">Sign In</a>
-                </p>
-              </div>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Follow User Modal -->
-      <ion-modal
-        :is-open="isFollowModalVisible"
-        @didDismiss="closeFollowModal()"
-        class="auth-modal"
-      >
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card auth-card">
-            <ion-card-header class="auth-card-header">
-              <ion-button
-                fill="clear"
-                @click="closeFollowModal()"
-                class="modal-close-button"
-              >
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-              <ion-card-title>Follow a User</ion-card-title>
-            </ion-card-header>
-
-            <ion-card-content>
-              <ion-item lines="none" class="input-with-icon">
-                <ion-icon :icon="personOutline" slot="start"></ion-icon>
-                <ion-input
-                  placeholder="Enter username to follow"
-                  v-model="friendUsername"
-                ></ion-input>
-              </ion-item>
-
-              <ion-button
-                expand="block"
-                @click="addFriend"
-                class="ion-margin-top yellow-button"
-              >
-                Follow
-              </ion-button>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- User Profile Summary Modal -->
-      <ion-modal
-        :is-open="isUserProfileModalVisible"
-        @didDismiss="isUserProfileModalVisible = false"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title v-if="selectedFriendProfile"
-              >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
+          <ion-card-content>
+            <ion-item
+              v-if="authView === 'signup'"
+              lines="none"
+              class="input-with-icon"
             >
-            <ion-buttons slot="end">
-              <ion-button @click="isUserProfileModalVisible = false">
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding" v-if="selectedFriendProfile">
-          <!-- Profile Stats Card -->
-          <ion-card class="styled-card profile-stats-card">
-            <ion-card-content>
-              <div class="profile-header">
-                <img
-                  :src="selectedFriendProfile.photoURL || '/default-avatar.png'"
-                  class="profile-picture-main"
-                />
-                <div class="profile-info">
-                  <h2 class="profile-display-name">
-                    {{ selectedFriendProfile.displayName }}
-                  </h2>
-                  <div class="profile-level" v-if="selectedFriendProfile.stats">
-                    <span class="level-icon">{{
-                      getLevelForXp(selectedFriendProfile.stats.xp).emoji
-                    }}</span>
-                    <span
-                      >{{ getLevelForXp(selectedFriendProfile.stats.xp).name }}
-                      -
-                      {{ Math.floor(selectedFriendProfile.stats.xp) }} XP</span
-                    >
-                  </div>
-                </div>
-              </div>
-              <ion-progress-bar
-                v-if="selectedFriendProfile.stats"
-                :value="getProgressForXp(selectedFriendProfile.stats.xp)"
-                color="warning"
-                class="ion-margin-vertical"
-              ></ion-progress-bar>
-              <div
-                class="profile-lifetime-stats"
-                v-if="selectedFriendProfile.stats"
-              >
-                <div class="stat-block">
-                  <p class="stat-title">Total Distance</p>
-                  <p class="stat-value">
-                    {{ selectedFriendProfile.stats.totalDistance.toFixed(2) }}
-                    mi
-                  </p>
-                </div>
-                <div class="stat-block">
-                  <p class="stat-title">Total Time</p>
-                  <p class="stat-value">
-                    {{
-                      formatTime(selectedFriendProfile.stats.totalTime, true)
-                    }}
-                  </p>
-                </div>
-              </div>
-            </ion-card-content>
-          </ion-card>
+              <ion-icon :icon="personOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Username"
+                v-model="displayName"
+              ></ion-input>
+            </ion-item>
 
-          <!-- Recent Runs -->
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Recent Runs</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <div v-if="isFetchingFriendRuns" class="ion-text-center">
-                <ion-spinner></ion-spinner>
-                <p>Loading runs...</p>
-              </div>
-              <ion-list
-                lines="none"
-                v-else-if="
-                  selectedFriendProfile.runs &&
-                  selectedFriendProfile.runs.length > 0
-                "
-              >
-                <div
-                  v-for="run in selectedFriendProfile.runs"
-                  :key="run.id"
-                  class="run-history-item"
-                >
-                  <div class="run-history-header">
-                    <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
-                  </div>
-                  <p v-if="run.description" class="run-description">
-                    "{{ run.description }}"
-                  </p>
-                  <div class="run-history-stats">
-                    <div>
-                      <p class="stat-label">Distance</p>
-                      <p class="stat-value small">
-                        {{ run.distance.toFixed(2) }}
-                        <span class="stat-unit">mi</span>
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Time</p>
-                      <p class="stat-value small">
-                        {{ formatTime(run.time, true) }}
-                      </p>
-                    </div>
-                    <div>
-                      <p class="stat-label">Avg Pace</p>
-                      <p class="stat-value small">{{ formatTime(run.pace) }}</p>
-                    </div>
-                  </div>
-                </div>
-              </ion-list>
-              <p v-else class="ion-text-center no-data-text">
-                This user has no logged runs yet.
-              </p>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-icon :icon="mailOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Email"
+                type="email"
+                v-model="email"
+              ></ion-input>
+            </ion-item>
 
-      <!-- Run Summary Modal -->
-      <ion-modal
-        :is-open="isSummaryModalVisible"
-        @didDismiss="handleSummaryModalDismiss"
-        class="summary-modal"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Run Complete!</ion-title>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-icon :icon="lockClosedOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Password"
+                type="password"
+                v-model="password"
+              ></ion-input>
+            </ion-item>
+
+            <p
+              v-if="authMessage"
+              class="ion-text-center ion-padding-horizontal"
+              style="color: var(--ion-color-warning); font-size: 0.9rem"
+            >
+              {{ authMessage }}
+            </p>
+
             <ion-button
-              slot="end"
-              fill="clear"
-              @click="isSummaryModalVisible = false"
+              expand="block"
+              @click="authView === 'signin' ? handleSignIn() : handleSignUp()"
+              class="ion-margin-top yellow-button"
             >
-              <ion-icon :icon="closeCircle"></ion-icon>
+              {{ authView === "signin" ? "Sign In" : "Create Account" }}
             </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card" v-if="lastRunSummary">
-            <!-- Map Summary -->
-            <div
-              id="summary-map"
-              ref="summaryMapContainer"
-              v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
-            ></div>
-            <ion-card-header>
-              <img
-                src="/icons/boot.svg"
-                alt="RunItUp Logo"
-                class="summary-logo-icon"
-              />
-              <ion-card-title class="summary-title"
-                >Great Work, {{ displayName }}!</ion-card-title
-              >
-            </ion-card-header>
-            <ion-card-content>
-              <div v-if="lastRunSummary.weather" class="weather-summary">
-                <ion-icon
-                  :icon="getWeatherIcon(lastRunSummary.weather.description)"
-                  class="weather-icon"
-                ></ion-icon>
 
-                <span class="weather-temp"
-                  >{{ Math.round(lastRunSummary.weather.temp) }}&deg;F</span
-                >
+            <div class="auth-separator">
+              <span>OR</span>
+            </div>
+
+            <ion-button
+              expand="block"
+              @click="handleGoogleSignIn"
+              color="light"
+              class="ion-margin-top"
+            >
+              <ion-icon slot="start" src="/assets/google-icon.svg"></ion-icon>
+              Sign In with Google
+            </ion-button>
+
+            <div class="auth-toggle">
+              <p v-if="authView === 'signin'">
+                Don't have an account?
+                <a @click="authView = 'signup'">Sign Up</a>
+              </p>
+              <p v-else>
+                Already have an account?
+                <a @click="authView = 'signin'">Sign In</a>
+              </p>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Follow User Modal -->
+    <ion-modal
+      :is-open="isFollowModalVisible"
+      @didDismiss="closeFollowModal()"
+      class="auth-modal"
+    >
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card auth-card">
+          <ion-card-header class="auth-card-header">
+            <ion-button
+              fill="clear"
+              @click="closeFollowModal()"
+              class="modal-close-button"
+            >
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+            </ion-button>
+            <ion-card-title>Follow a User</ion-card-title>
+          </ion-card-header>
+
+          <ion-card-content>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-icon :icon="personOutline" slot="start"></ion-icon>
+              <ion-input
+                placeholder="Enter username to follow"
+                v-model="friendUsername"
+              ></ion-input>
+            </ion-item>
+
+            <ion-button
+              expand="block"
+              @click="addFriend"
+              class="ion-margin-top yellow-button"
+            >
+              Follow
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- User Profile Summary Modal -->
+    <ion-modal
+      :is-open="isUserProfileModalVisible"
+      @didDismiss="isUserProfileModalVisible = false"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title v-if="selectedFriendProfile"
+            >{{ selectedFriendProfile.displayName }}'s Profile</ion-title
+          >
+          <ion-buttons slot="end">
+            <ion-button @click="isUserProfileModalVisible = false">
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding" v-if="selectedFriendProfile">
+        <!-- Profile Stats Card -->
+        <ion-card class="styled-card profile-stats-card">
+          <ion-card-content>
+            <div class="profile-header">
+              <img
+                :src="selectedFriendProfile.photoURL || '/default-avatar.png'"
+                class="profile-picture-main"
+              />
+              <div class="profile-info">
+                <h2 class="profile-display-name">
+                  {{ selectedFriendProfile.displayName }}
+                </h2>
+                <div class="profile-level" v-if="selectedFriendProfile.stats">
+                  <span class="level-icon">{{
+                    getLevelForXp(selectedFriendProfile.stats.xp).emoji
+                  }}</span>
+                  <span
+                    >{{ getLevelForXp(selectedFriendProfile.stats.xp).name }}
+                    -
+                    {{ Math.floor(selectedFriendProfile.stats.xp) }} XP</span
+                  >
+                </div>
               </div>
-              <ion-grid class="summary-stats-grid">
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="rocket" color="primary"></ion-icon>
+            </div>
+            <ion-progress-bar
+              v-if="selectedFriendProfile.stats"
+              :value="getProgressForXp(selectedFriendProfile.stats.xp)"
+              color="warning"
+              class="ion-margin-vertical"
+            ></ion-progress-bar>
+            <div
+              class="profile-lifetime-stats"
+              v-if="selectedFriendProfile.stats"
+            >
+              <div class="stat-block">
+                <p class="stat-title">Total Distance</p>
+                <p class="stat-value">
+                  {{ selectedFriendProfile.stats.totalDistance.toFixed(2) }}
+                  mi
+                </p>
+              </div>
+              <div class="stat-block">
+                <p class="stat-title">Total Time</p>
+                <p class="stat-value">
+                  {{ formatTime(selectedFriendProfile.stats.totalTime, true) }}
+                </p>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Recent Runs -->
+        <ion-card class="styled-card">
+          <ion-card-header>
+            <ion-card-title>Recent Runs</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div v-if="isFetchingFriendRuns" class="ion-text-center">
+              <ion-spinner></ion-spinner>
+              <p>Loading runs...</p>
+            </div>
+            <ion-list
+              lines="none"
+              v-else-if="
+                selectedFriendProfile.runs &&
+                selectedFriendProfile.runs.length > 0
+              "
+            >
+              <div
+                v-for="run in selectedFriendProfile.runs"
+                :key="run.id"
+                class="run-history-item"
+              >
+                <div class="run-history-header">
+                  <h2>{{ new Date(run.date).toLocaleDateString() }}</h2>
+                </div>
+                <p v-if="run.description" class="run-description">
+                  "{{ run.description }}"
+                </p>
+                <div class="run-history-stats">
+                  <div>
                     <p class="stat-label">Distance</p>
-                    <p class="stat-value">
-                      {{ lastRunSummary.distance.toFixed(2) }}
+                    <p class="stat-value small">
+                      {{ run.distance.toFixed(2) }}
                       <span class="stat-unit">mi</span>
                     </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                  </div>
+                  <div>
                     <p class="stat-label">Time</p>
-                    <p class="stat-value">
-                      {{ formatTime(lastRunSummary.time, true) }}
-                    </p>
-                  </ion-col>
-                </ion-row>
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="speedometer" color="primary"></ion-icon>
-                    <p class="stat-label">Avg. Pace</p>
-                    <p class="stat-value">
-                      {{ formatTime(lastRunSummary.pace) }}
-                      <span class="stat-unit">/mi</span>
-                    </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="statsChart" color="primary"></ion-icon>
-                    <p class="stat-label">XP Gained</p>
-                    <p class="stat-value">{{ lastRunXp }}</p>
-                  </ion-col>
-                </ion-row>
-              </ion-grid>
-              <!-- Run Description Input -->
-              <ion-item lines="none" class="input-with-icon ion-margin-top">
-                <ion-input
-                  label="Description"
-                  label-placement="floating"
-                  placeholder="(Optional)"
-                  v-model="runSummaryDescription"
-                ></ion-input>
-              </ion-item>
-              <!-- Shoe Selector Dropdown -->
-              <ion-item
-                lines="none"
-                class="input-with-icon ion-margin-top"
-                v-if="userShoes.length > 0"
-              >
-                <ion-label>Shoe Worn</ion-label>
-                <ion-select
-                  placeholder="Select Shoe"
-                  v-model="selectedShoeForRun"
-                >
-                  <ion-select-option
-                    v-for="shoe in userShoes"
-                    :key="shoe.id"
-                    :value="shoe.id"
-                  >
-                    {{ shoe.brandName }} {{ shoe.modelName }}
-                  </ion-select-option>
-                </ion-select>
-              </ion-item>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Live Tracking Modal -->
-      <ion-modal
-        :is-open="isLiveTrackingModalVisible"
-        @ionModalDidDismiss="destroyMap"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Live Run</ion-title>
-            <ion-button
-              slot="end"
-              fill="clear"
-              @click="isLiveTrackingModalVisible = false"
-            >
-              <ion-icon :icon="closeCircle"></ion-icon>
-            </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Track a Run</ion-card-title>
-            </ion-card-header>
-            <div id="map" ref="mapContainer"></div>
-            <ion-card-content>
-              <ion-button
-                v-if="!isTracking"
-                expand="block"
-                @click="startWorkout"
-                class="yellow-button"
-                >Start Tracking</ion-button
-              >
-              <div v-if="isTracking">
-                <div class="tracking-stats">
-                  <div>
-                    <p class="tracking-label">DISTANCE</p>
-                    <p class="tracking-value">
-                      {{ currentDistance.toFixed(2) }} mi
+                    <p class="stat-value small">
+                      {{ formatTime(run.time, true) }}
                     </p>
                   </div>
                   <div>
-                    <p class="tracking-label">PACE</p>
-                    <p class="tracking-value">
-                      {{ formatTime(currentPace) }}
-                    </p>
+                    <p class="stat-label">Avg Pace</p>
+                    <p class="stat-value small">{{ formatTime(run.pace) }}</p>
                   </div>
-                  <div>
-                    <p class="tracking-label">TIME</p>
-                    <p class="tracking-value">
-                      {{ formatTime(elapsedTime) }}
-                    </p>
-                  </div>
-                </div>
-                <!-- Hold to Stop Button -->
-                <div
-                  class="hold-to-stop-button ion-margin-top"
-                  @mousedown="startHoldStop"
-                  @mouseup="cancelHoldStop"
-                  @mouseleave="cancelHoldStop"
-                  @touchstart.prevent="startHoldStop"
-                  @touchend="cancelHoldStop"
-                >
-                  <div
-                    class="hold-progress"
-                    :style="{ transform: `scaleX(${holdProgress})` }"
-                  ></div>
-                  <span class="hold-text">HOLD TO STOP</span>
                 </div>
               </div>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
+            </ion-list>
+            <p v-else class="ion-text-center no-data-text">
+              This user has no logged runs yet.
+            </p>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
 
-      <!-- Log Run Modal -->
-      <ion-modal :is-open="isLogRunModalVisible">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Log a Past Run</ion-title>
-            <ion-button
-              slot="end"
-              fill="clear"
-              @click="isLogRunModalVisible = false"
+    <!-- Run Summary Modal -->
+    <ion-modal
+      :is-open="isSummaryModalVisible"
+      @didDismiss="handleSummaryModalDismiss"
+      class="summary-modal"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Run Complete!</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isSummaryModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card" v-if="lastRunSummary">
+          <!-- Map Summary -->
+          <div
+            id="summary-map"
+            ref="summaryMapContainer"
+            v-if="lastRunSummary.route && lastRunSummary.route.length > 0"
+          ></div>
+          <ion-card-header>
+            <img
+              src="/icons/boot.svg"
+              alt="RunItUp Logo"
+              class="summary-logo-icon"
+            />
+            <ion-card-title class="summary-title"
+              >Great Work, {{ displayName }}!</ion-card-title
             >
-              <ion-icon :icon="closeCircle"></ion-icon>
-            </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-header>
-              <ion-card-title>Log a Run</ion-card-title>
-            </ion-card-header>
-            <ion-card-content>
-              <div class="input-group">
+          </ion-card-header>
+          <ion-card-content>
+            <div v-if="lastRunSummary.weather" class="weather-summary">
+              <ion-icon
+                :icon="getWeatherIcon(lastRunSummary.weather.description)"
+                class="weather-icon"
+              ></ion-icon>
+
+              <span class="weather-temp"
+                >{{ Math.round(lastRunSummary.weather.temp) }}&deg;F</span
+              >
+            </div>
+            <ion-grid class="summary-stats-grid">
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="rocket" color="primary"></ion-icon>
+                  <p class="stat-label">Distance</p>
+                  <p class="stat-value">
+                    {{ lastRunSummary.distance.toFixed(2) }}
+                    <span class="stat-unit">mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                  <p class="stat-label">Time</p>
+                  <p class="stat-value">
+                    {{ formatTime(lastRunSummary.time, true) }}
+                  </p>
+                </ion-col>
+              </ion-row>
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="speedometer" color="primary"></ion-icon>
+                  <p class="stat-label">Avg. Pace</p>
+                  <p class="stat-value">
+                    {{ formatTime(lastRunSummary.pace) }}
+                    <span class="stat-unit">/mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="statsChart" color="primary"></ion-icon>
+                  <p class="stat-label">XP Gained</p>
+                  <p class="stat-value">{{ lastRunXp }}</p>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+            <!-- Run Description Input -->
+            <ion-item lines="none" class="input-with-icon ion-margin-top">
+              <ion-input
+                label="Description"
+                label-placement="floating"
+                placeholder="(Optional)"
+                v-model="runSummaryDescription"
+              ></ion-input>
+            </ion-item>
+            <!-- Shoe Selector Dropdown -->
+            <ion-item
+              lines="none"
+              class="input-with-icon ion-margin-top"
+              v-if="userShoes.length > 0"
+            >
+              <ion-label>Shoe Worn</ion-label>
+              <ion-select
+                placeholder="Select Shoe"
+                v-model="selectedShoeForRun"
+              >
+                <ion-select-option
+                  v-for="shoe in userShoes"
+                  :key="shoe.id"
+                  :value="shoe.id"
+                >
+                  {{ shoe.brandName }} {{ shoe.modelName }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Live Tracking Modal -->
+    <ion-modal
+      :is-open="isLiveTrackingModalVisible"
+      @ionModalDidDismiss="destroyMap"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Live Run</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isLiveTrackingModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-header>
+            <ion-card-title>Track a Run</ion-card-title>
+          </ion-card-header>
+          <div id="map" ref="mapContainer"></div>
+          <ion-card-content>
+            <ion-button
+              v-if="!isTracking"
+              expand="block"
+              @click="startWorkout"
+              class="yellow-button"
+              >Start Tracking</ion-button
+            >
+            <div v-if="isTracking">
+              <div class="tracking-stats">
+                <div>
+                  <p class="tracking-label">DISTANCE</p>
+                  <p class="tracking-value">
+                    {{ currentDistance.toFixed(2) }} mi
+                  </p>
+                </div>
+                <div>
+                  <p class="tracking-label">PACE</p>
+                  <p class="tracking-value">
+                    {{ formatTime(currentPace) }}
+                  </p>
+                </div>
+                <div>
+                  <p class="tracking-label">TIME</p>
+                  <p class="tracking-value">
+                    {{ formatTime(elapsedTime) }}
+                  </p>
+                </div>
+              </div>
+              <!-- Hold to Stop Button -->
+              <div
+                class="hold-to-stop-button ion-margin-top"
+                @mousedown="startHoldStop"
+                @mouseup="cancelHoldStop"
+                @mouseleave="cancelHoldStop"
+                @touchstart.prevent="startHoldStop"
+                @touchend="cancelHoldStop"
+              >
+                <div
+                  class="hold-progress"
+                  :style="{ transform: `scaleX(${holdProgress})` }"
+                ></div>
+                <span class="hold-text">HOLD TO STOP</span>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Log Run Modal -->
+    <ion-modal :is-open="isLogRunModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Log a Past Run</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isLogRunModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-header>
+            <ion-card-title>Log a Run</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="input-group">
+              <ion-input
+                class="styled-input"
+                placeholder="Distance (miles)"
+                type="number"
+                v-model="distanceInput"
+              ></ion-input>
+              <div style="display: flex; gap: 8px" class="ion-margin-top">
                 <ion-input
                   class="styled-input"
-                  placeholder="Distance (miles)"
+                  placeholder="Hours"
                   type="number"
-                  v-model="distanceInput"
+                  v-model="hoursInput"
                 ></ion-input>
-                <div style="display: flex; gap: 8px" class="ion-margin-top">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Hours"
-                    type="number"
-                    v-model="hoursInput"
-                  ></ion-input>
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Minutes"
-                    type="number"
-                    v-model="minutesInput"
-                  ></ion-input>
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Seconds"
-                    type="number"
-                    v-model="secondsInput"
-                  ></ion-input>
-                </div>
+                <ion-input
+                  class="styled-input"
+                  placeholder="Minutes"
+                  type="number"
+                  v-model="minutesInput"
+                ></ion-input>
+                <ion-input
+                  class="styled-input"
+                  placeholder="Seconds"
+                  type="number"
+                  v-model="secondsInput"
+                ></ion-input>
               </div>
-              <!-- Run Description Input -->
-              <ion-item lines="none" class="input-with-icon ion-margin-top">
-                <ion-input
-                  label="Description"
-                  label-placement="floating"
-                  placeholder="(Optional)"
-                  v-model="logRunDescription"
-                ></ion-input>
-              </ion-item>
-              <!-- Shoe Selector Dropdown -->
-              <ion-item
-                lines="none"
-                class="input-with-icon ion-margin-top"
-                v-if="userShoes.length > 0"
-              >
-                <ion-label>Shoe Worn (Optional)</ion-label>
-                <ion-select
-                  placeholder="Select Shoe"
-                  v-model="selectedShoeForRun"
-                >
-                  <ion-select-option
-                    v-for="shoe in userShoes"
-                    :key="shoe.id"
-                    :value="shoe.id"
-                  >
-                    {{ shoe.brandName }} {{ shoe.modelName }}
-                  </ion-select-option>
-                </ion-select>
-              </ion-item>
-              <ion-button
-                expand="block"
-                @click="logRun"
-                class="ion-margin-top yellow-button"
-                >Log Run</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-      <!-- Profile Settings Dropdown -->
-      <ion-modal :is-open="isEditProfileModalVisible">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Edit Profile</ion-title>
-            <ion-buttons slot="end">
-              <ion-button @click="isEditProfileModalVisible = false">
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-content>
-              <ion-list>
-                <ion-item lines="none">
-                  <ion-button
-                    expand="block"
-                    fill="outline"
-                    @click="triggerFileUpload"
-                    class="full-width-button"
-                  >
-                    Change Profile Picture
-                  </ion-button>
-                  <input
-                    type="file"
-                    @change="handlePictureUpload"
-                    ref="fileInput"
-                    style="display: none"
-                    accept="image/*"
-                  />
-                </ion-item>
-                <ion-item lines="none">
-                  <ion-input
-                    class="styled-input"
-                    placeholder="Enter new username"
-                    v-model="newDisplayName"
-                  ></ion-input>
-                </ion-item>
-                <ion-item lines="none">
-                  <ion-button
-                    expand="block"
-                    @click="updateUsername"
-                    color="primary"
-                    class="full-width-button"
-                  >
-                    Save Username
-                  </ion-button>
-                </ion-item>
-              </ion-list>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Add Shoe Modal -->
-      <ion-modal :is-open="isAddShoeModalVisible">
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Add a New Shoe</ion-title>
-            <ion-buttons slot="end">
-              <ion-button @click="isAddShoeModalVisible = false">
-                <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card">
-            <ion-card-content>
-              <ion-item lines="none" class="input-with-icon">
-                <ion-input
-                  label="Brand Name"
-                  label-placement="floating"
-                  placeholder="e.g., Hoka"
-                  v-model="newShoeBrand"
-                ></ion-input>
-              </ion-item>
-              <ion-item lines="none" class="input-with-icon">
-                <ion-input
-                  label="Model Name"
-                  label-placement="floating"
-                  placeholder="e.g., Clifton 9"
-                  v-model="newShoeModel"
-                ></ion-input>
-              </ion-item>
-              <ion-button
-                expand="block"
-                @click="addShoe"
-                class="ion-margin-top yellow-button"
-                >Save Shoe</ion-button
-              >
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-
-      <!-- Shoe Detail Modal -->
-      <ion-modal
-        :is-open="isShoeDetailModalVisible"
-        @didDismiss="isShoeDetailModalVisible = false"
-        class="summary-modal"
-      >
-        <ion-header>
-          <ion-toolbar>
-            <ion-title>Shoe Details</ion-title>
-            <ion-button
-              slot="end"
-              fill="clear"
-              @click="isShoeDetailModalVisible = false"
+            </div>
+            <!-- Run Description Input -->
+            <ion-item lines="none" class="input-with-icon ion-margin-top">
+              <ion-input
+                label="Description"
+                label-placement="floating"
+                placeholder="(Optional)"
+                v-model="logRunDescription"
+              ></ion-input>
+            </ion-item>
+            <!-- Shoe Selector Dropdown -->
+            <ion-item
+              lines="none"
+              class="input-with-icon ion-margin-top"
+              v-if="userShoes.length > 0"
             >
-              <ion-icon :icon="closeCircle"></ion-icon>
+              <ion-label>Shoe Worn (Optional)</ion-label>
+              <ion-select
+                placeholder="Select Shoe"
+                v-model="selectedShoeForRun"
+              >
+                <ion-select-option
+                  v-for="shoe in userShoes"
+                  :key="shoe.id"
+                  :value="shoe.id"
+                >
+                  {{ shoe.brandName }} {{ shoe.modelName }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
+            <ion-button
+              expand="block"
+              @click="logRun"
+              class="ion-margin-top yellow-button"
+              >Log Run</ion-button
+            >
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+    <!-- Profile Settings Dropdown -->
+    <ion-modal :is-open="isEditProfileModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Edit Profile</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isEditProfileModalVisible = false">
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
             </ion-button>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content class="ion-padding">
-          <ion-card class="styled-card" v-if="selectedShoeDetails">
-            <ion-card-header>
-              <ion-card-title class="summary-title">
-                {{ selectedShoeDetails.brandName }}
-              </ion-card-title>
-              <p class="ion-text-center">{{ selectedShoeDetails.modelName }}</p>
-            </ion-card-header>
-            <ion-card-content>
-              <ion-grid class="summary-stats-grid">
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="rocket" color="primary"></ion-icon>
-                    <p class="stat-label">Total Distance</p>
-                    <p class="stat-value">
-                      {{ selectedShoeDetails.totalDistance.toFixed(2) }}
-                      <span class="stat-unit">mi</span>
-                    </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="timeOutline" color="primary"></ion-icon>
-                    <p class="stat-label">Total Time</p>
-                    <p class="stat-value">
-                      {{ formatTime(selectedShoeDetails.totalTime, true) }}
-                    </p>
-                  </ion-col>
-                </ion-row>
-                <ion-row>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="speedometer" color="primary"></ion-icon>
-                    <p class="stat-label">Avg. Pace</p>
-                    <p class="stat-value">
-                      {{ formatTime(averagePaceInSelectedShoe) }}
-                      <span class="stat-unit">/mi</span>
-                    </p>
-                  </ion-col>
-                  <ion-col size="6" class="summary-stat-item">
-                    <ion-icon :icon="walk" color="primary"></ion-icon>
-                    <p class="stat-label">Total Runs</p>
-                    <p class="stat-value">{{ selectedShoeDetails.runCount }}</p>
-                  </ion-col>
-                </ion-row>
-              </ion-grid>
-            </ion-card-content>
-          </ion-card>
-        </ion-content>
-      </ion-modal>
-    </template>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-content>
+            <ion-list>
+              <ion-item lines="none">
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  @click="triggerFileUpload"
+                  class="full-width-button"
+                >
+                  Change Profile Picture
+                </ion-button>
+                <input
+                  type="file"
+                  @change="handlePictureUpload"
+                  ref="fileInput"
+                  style="display: none"
+                  accept="image/*"
+                />
+              </ion-item>
+              <ion-item lines="none">
+                <ion-input
+                  class="styled-input"
+                  placeholder="Enter new username"
+                  v-model="newDisplayName"
+                ></ion-input>
+              </ion-item>
+              <ion-item lines="none">
+                <ion-button
+                  expand="block"
+                  @click="updateUsername"
+                  color="primary"
+                  class="full-width-button"
+                >
+                  Save Username
+                </ion-button>
+              </ion-item>
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Add Shoe Modal -->
+    <ion-modal :is-open="isAddShoeModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Add a New Shoe</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isAddShoeModalVisible = false">
+              <ion-icon slot="icon-only" :icon="closeCircle"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-content>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-input
+                label="Brand Name"
+                label-placement="floating"
+                placeholder="e.g., Hoka"
+                v-model="newShoeBrand"
+              ></ion-input>
+            </ion-item>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-input
+                label="Model Name"
+                label-placement="floating"
+                placeholder="e.g., Clifton 9"
+                v-model="newShoeModel"
+              ></ion-input>
+            </ion-item>
+            <ion-button
+              expand="block"
+              @click="addShoe"
+              class="ion-margin-top yellow-button"
+              >Save Shoe</ion-button
+            >
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Shoe Detail Modal -->
+    <ion-modal
+      :is-open="isShoeDetailModalVisible"
+      @didDismiss="isShoeDetailModalVisible = false"
+      class="summary-modal"
+    >
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Shoe Details</ion-title>
+          <ion-button
+            slot="end"
+            fill="clear"
+            @click="isShoeDetailModalVisible = false"
+          >
+            <ion-icon :icon="closeCircle"></ion-icon>
+          </ion-button>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card" v-if="selectedShoeDetails">
+          <ion-card-header>
+            <ion-card-title class="summary-title">
+              {{ selectedShoeDetails.brandName }}
+            </ion-card-title>
+            <p class="ion-text-center">{{ selectedShoeDetails.modelName }}</p>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-grid class="summary-stats-grid">
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="rocket" color="primary"></ion-icon>
+                  <p class="stat-label">Total Distance</p>
+                  <p class="stat-value">
+                    {{ selectedShoeDetails.totalDistance.toFixed(2) }}
+                    <span class="stat-unit">mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="timeOutline" color="primary"></ion-icon>
+                  <p class="stat-label">Total Time</p>
+                  <p class="stat-value">
+                    {{ formatTime(selectedShoeDetails.totalTime, true) }}
+                  </p>
+                </ion-col>
+              </ion-row>
+              <ion-row>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="speedometer" color="primary"></ion-icon>
+                  <p class="stat-label">Avg. Pace</p>
+                  <p class="stat-value">
+                    {{ formatTime(averagePaceInSelectedShoe) }}
+                    <span class="stat-unit">/mi</span>
+                  </p>
+                </ion-col>
+                <ion-col size="6" class="summary-stat-item">
+                  <ion-icon :icon="footsteps" color="primary"></ion-icon>
+                  <p class="stat-label">Total Runs</p>
+                  <p class="stat-value">{{ selectedShoeDetails.runCount }}</p>
+                </ion-col>
+              </ion-row>
+            </ion-grid>
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
   </ion-app>
 </template>
 
 <style>
-/* --- NEW: Animated Gradient Background --- */
 /* This style block is NOT scoped to affect the entire app background */
 @keyframes gradient {
   0% {
@@ -2902,7 +2532,7 @@ onUnmounted(() => {
 </style>
 
 <style scoped>
-/* --- NEW: 3D Glassmorphism Styles --- */
+/* --- 3D Glassmorphism & Global Styles --- */
 ion-header.ion-no-border ion-toolbar {
   --background: transparent;
 }
@@ -2914,8 +2544,8 @@ ion-content {
   animation: gradient 15s ease infinite;
 }
 
-.styled-card {
-  /* Enhanced Glass Effect */
+/* This global selector targets all child components */
+:deep(.styled-card) {
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.1),
@@ -2923,17 +2553,14 @@ ion-content {
   );
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-radius: 24px; /* More rounded for a 'liquid' feel */
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-
-  /* 3D Depth & Lighting */
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  /* The transform is now handled by JS for a dynamic effect */
   transition: transform 0.3s ease;
   margin-bottom: 1.5rem;
 }
 
-.yellow-button {
+:deep(.yellow-button) {
   --background: #fbbf24;
   --background-activated: #f59e0b;
   --color: #1a202c;
@@ -2944,12 +2571,315 @@ ion-content {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-/* MODIFIED: Gives buttons a 'pressed' feel on tap */
-.yellow-button:active {
+:deep(.yellow-button:active) {
   transform: translateY(2px);
   --box-shadow: 0 2px 10px -5px rgba(251, 191, 36, 0.8);
 }
+:deep(.stat-label) {
+  color: #d1d5db;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  margin: 0;
+}
+:deep(.stat-value) {
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 4px 0 0 0;
+}
+:deep(.stat-unit) {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: #d1d5db;
+}
+:deep(.stat-value.small) {
+  font-size: clamp(1.2rem, 3.5vw, 1.5rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:deep(.run-history-stats) {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+  margin-top: 1rem;
+}
+:deep(.run-description) {
+  font-style: italic;
+  color: #f0f0f0;
+  padding: 10px 14px;
+  margin: 10px 0 4px 0;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-radius: 8px;
+  border-left: 3px solid #fbbf24;
+}
+:deep(.run-card-map) {
+  height: 150px;
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  background-color: #3a4b7a;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+:deep(.section-title) {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d1d5db;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
 
+:deep(.styled-card ion-card-title) {
+  color: #ffffff !important; /* Use !important to ensure this rule wins */
+  font-weight: 600; /* Let's make it a bit bolder too */
+}
+:deep(.no-data-text) {
+  font-style: italic;
+  color: var(--ion-color-medium);
+  font-size: 0.9rem;
+}
+
+/* Shared Level/XP Styles */
+:deep(.level-display) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fbbf24;
+}
+:deep(.level-emoji) {
+  font-size: 1.5rem;
+}
+:deep(.xp-text) {
+  font-size: 0.8rem;
+  color: #d1d5db;
+  text-align: right;
+  margin-top: 0.5rem;
+}
+/* Add these new styles inside the <style scoped> tag in src/App.vue */
+
+/* Run Summary Modal Styles */
+.summary-logo-icon {
+  width: 60px;
+  height: auto;
+  margin: 0 auto 0.5rem;
+  display: block;
+}
+
+.summary-title {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+}
+
+.summary-stats-grid {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+}
+
+.summary-stat-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-stat-item ion-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.weather-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 16px;
+  width: fit-content;
+  margin: 0 auto 1.5rem auto;
+}
+
+.weather-icon {
+  font-size: 1.8rem;
+  color: #fbbf24; /* Yellow to match theme */
+}
+
+.weather-temp {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Log a Past Run Modal Styles */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.styled-input {
+  --background: rgba(255, 255, 255, 0.1);
+  --padding-start: 12px;
+  --placeholder-color: #d1d5db;
+  --color: #ffffff;
+  border-radius: 8px;
+}
+
+.full-width-button {
+  width: 100%;
+}
+
+/* Auth Modal Specific Styles (Shared with other modals) */
+.auth-card {
+  --padding-start: 1rem;
+  --padding-end: 1rem;
+  --padding-top: 1.5rem;
+  --padding-bottom: 1.5rem;
+  max-width: 400px;
+  margin: auto;
+}
+
+.auth-card-header {
+  text-align: center;
+  padding-bottom: 1rem;
+}
+
+.auth-logo {
+  width: 80px;
+  height: auto;
+  margin: 0 auto 1rem;
+}
+
+.input-with-icon {
+  --background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  --padding-start: 12px;
+}
+
+.input-with-icon ion-icon {
+  margin-right: 8px;
+  color: #d1d5db;
+}
+
+.auth-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #d1d5db;
+  margin: 1.5rem 0;
+}
+
+.auth-separator::before,
+.auth-separator::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.auth-separator:not(:empty)::before {
+  margin-right: 0.5em;
+}
+
+.auth-separator:not(:empty)::after {
+  margin-left: 0.5em;
+}
+
+.auth-toggle {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #d1d5db;
+}
+
+.auth-toggle a {
+  color: #fbbf24;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.8rem;
+}
+:deep(.profile-header) {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+:deep(.profile-picture-main) {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--ion-color-primary);
+  flex-shrink: 0; /* Prevents the image from shrinking */
+}
+:deep(.profile-info) {
+  flex-grow: 1;
+}
+:deep(.profile-display-name) {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+:deep(.profile-level) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: #fbbf24;
+  margin-top: 4px;
+}
+:deep(.profile-lifetime-stats) {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+  margin-top: 1rem;
+}
+:deep(.run-history-item) {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  /* This border is key to separating the runs */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+}
+:deep(.run-history-item:last-child) {
+  border-bottom: none;
+}
+:deep(.run-history-header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+:deep(.run-history-item h2) {
+  font-weight: 600;
+  color: #fbbf24;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+:deep(.styled-card ion-list) {
+  --ion-background-color: transparent;
+  background: transparent; /* Fallback for older browsers */
+  padding: 0; /* Remove default list padding */
+}
+/* Footer & Navigation */
 .footer-tabs {
   position: fixed;
   bottom: 0;
@@ -2966,7 +2896,6 @@ ion-content {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: env(safe-area-inset-bottom);
 }
-
 .footer-tabs button {
   background: none;
   border: none;
@@ -2978,18 +2907,13 @@ ion-content {
   transition: color 0.2s;
   position: relative;
 }
-
-/* MODIFIED: Active tab glow effect */
 .footer-tabs button.active {
   color: #fbbf24;
   text-shadow: 0 0 10px #fbbf24;
 }
-
-/* NEW: Bounce animation for the active icon */
 .footer-tabs button.active ion-icon {
   animation: bounce 0.5s;
 }
-
 @keyframes bounce {
   0%,
   100% {
@@ -2999,182 +2923,6 @@ ion-content {
     transform: translateY(-5px);
   }
 }
-
-/* --- Existing & Tweaked Styles --- */
-
-.run-action-card {
-  padding: 8px;
-}
-.run-button {
-  --padding-top: 20px;
-  --padding-bottom: 20px;
-  font-size: 1.2rem;
-}
-.stat-value.small {
-  font-size: clamp(1.2rem, 3.5vw, 1.5rem);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.summary-stat-item .stat-value.small {
-  font-size: 1.5rem;
-}
-.xp-text {
-  font-size: 0.8rem;
-  color: #d1d5db;
-  text-align: right;
-  margin-top: 0.5rem;
-}
-.run-shoe-tag {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: #d1d5db;
-  margin-top: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
-  padding: 4px 8px;
-  border-radius: 12px;
-  width: fit-content;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Weekly Chart Styles */
-.weekly-header {
-  display: flex;
-}
-.weekly-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.week-nav-buttons {
-  display: flex;
-  align-items: center;
-}
-.week-dates {
-  color: #ffffff;
-  font-size: 1.1em;
-  font-weight: 600;
-  text-align: center;
-  margin: 0 0 0.5rem 0;
-}
-.weekly-total {
-  text-align: center;
-  font-size: 1.1em;
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-.chart-container {
-  display: flex;
-  justify-content: space-around;
-  align-items: flex-end;
-  height: 150px;
-  padding: 10px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-.chart-bar-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-  justify-content: flex-end;
-}
-.chart-bar {
-  width: 70%;
-  background-color: var(--ion-color-primary);
-  border-radius: 4px 4px 0 0;
-  transition: height 0.5s ease-out; /* NEW: Added transition for smooth animation */
-  position: relative;
-  min-height: 2px; /* Show a sliver for 0-distance days */
-}
-.bar-value {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.8rem;
-  color: white;
-  opacity: 1;
-  transition: opacity 0.3s;
-  padding: 2px 4px;
-  border-radius: 3px;
-}
-
-.chart-label {
-  margin-top: 8px;
-  font-size: 0.8rem;
-  color: var(--ion-color-medium);
-}
-
-.welcome-text {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #fff;
-}
-.styled-card ion-card-title {
-  font-weight: 700;
-  color: #fff;
-}
-.styled-card p {
-  color: #eee;
-}
-.styled-card ion-list {
-  background: transparent;
-}
-.styled-input {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  color: #fff;
-  margin-bottom: 8px;
-  --padding-start: 16px;
-}
-.stat-item {
-  margin-bottom: 1rem;
-}
-.stat-item:last-child {
-  margin-bottom: 0;
-}
-.stat-label {
-  color: #d1d5db;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-}
-.stat-value {
-  color: #ffffff;
-  font-size: 2.25rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-.stat-value.small {
-  font-size: clamp(1.1rem, 4.2vw, 1.5rem);
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-  max-width: 100%;
-}
-.stat-unit {
-  font-size: 1.25rem;
-  font-weight: 400;
-  color: #d1d5db;
-}
-.level-display {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #fbbf24;
-}
-.level-emoji {
-  font-size: 1.5rem;
-}
-
 .footer-tabs ion-icon {
   font-size: 26px;
   margin-bottom: 2px;
@@ -3182,121 +2930,21 @@ ion-content {
 ion-content {
   --padding-bottom: 80px;
 }
-.auth-modal ion-content {
-  --background: transparent;
-}
-.auth-modal .input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.auth-modal h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-}
-.tracking-stats {
-  display: flex;
-  justify-content: space-around;
-  text-align: center;
-  margin: 1rem 0;
-}
-.tracking-label {
-  font-size: 0.75rem;
-  color: #d1d5db;
-  text-transform: uppercase;
-}
-.tracking-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-/* Run History Styles */
-.run-history-item {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: transparent;
-}
-.run-history-item:last-child {
-  border-bottom: none;
-}
-.run-history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-.run-history-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  text-align: center;
-}
-
-/* Friend Card Styles */
-.friend-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-.friend-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.run-history-item h2,
-.friend-card h2 {
-  font-weight: 600;
-  color: #fbbf24;
-}
-.friend-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #fbbf24;
-}
-.friend-total-stats {
-  margin-top: 1rem;
-  font-size: 0.9rem;
-}
-.run-history-item.mini {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin: 0.5rem 0;
-}
-.run-history-item.mini .stat-value.small {
-  font-size: 1.2rem;
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.25s ease-out;
 }
-
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(10px) scale(0.98);
-}
-
+.fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-  transform: translateY(10px) scale(0.98);
+  transform: translateY(10px);
 }
-.profile-picture {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 4px solid var(--ion-color-primary);
-  margin: auto;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
+
+/* Other Global Styles */
+.welcome-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
 }
 .page-avatar {
   position: absolute;
@@ -3309,53 +2957,6 @@ ion-content {
   z-index: 10;
   object-fit: cover;
 }
-.friend-identity {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.friend-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/* Alert Styles */
-.custom-alert {
-  --background: #2b499b;
-  --backdrop-opacity: 0.6;
-}
-
-.custom-alert .alert-title {
-  color: #ffffff !important;
-}
-
-.custom-alert .alert-message {
-  color: #e0e0e0 !important;
-}
-
-.custom-alert .alert-button {
-  color: #fbbf24 !important;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.custom-alert .alert-button-role-destructive {
-  color: #ff4961 !important;
-}
-
-/* Loading Overlay Styles */
-.loading-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  font-family: "Orbitron", sans-serif;
-}
-
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -3369,26 +2970,30 @@ ion-content {
   z-index: 9999;
   flex-direction: column;
 }
-
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-family: "Orbitron", sans-serif;
+}
 .loading-content p {
   color: var(--ion-text-color);
   font-size: 1.2rem;
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
 }
-
 .loading-logo {
   width: 120px;
   height: auto;
   animation: pulse 2s infinite ease-in-out;
 }
-
 ion-spinner {
   width: 50px;
   height: 50px;
   color: var(--ion-color-primary);
 }
-
 @keyframes pulse {
   0% {
     transform: scale(1);
@@ -3404,334 +3009,17 @@ ion-spinner {
   }
 }
 
-/* Friend List Styles */
-.friend-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/* Modal Styles */
+.auth-modal,
+.summary-modal {
+  --background: transparent;
 }
-
-.friend-card-refined {
-  /* This class now inherits from .styled-card */
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.friend-main-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.friend-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--ion-color-primary);
-  flex-shrink: 0;
-}
-
-.friend-details {
-  flex-grow: 1;
-}
-
-.friend-name {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-}
-
-.friend-level {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: #fbbf24;
-}
-
-.level-icon {
-  font-size: 1.1rem;
-}
-
-.unfollow-button {
-  --padding-start: 8px;
-  --padding-end: 8px;
-  margin-left: auto;
-}
-
-.friend-progress {
-  width: 100%;
-}
-
-ion-progress-bar {
-  height: 6px;
-  border-radius: 3px;
-}
-
-.friend-latest-run {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 1rem;
-}
-
-.section-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #d1d5db;
-  text-transform: uppercase;
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-  text-align: center;
-}
-
-.no-data-text {
-  font-style: italic;
-  color: var(--ion-color-medium);
-  font-size: 0.9rem;
-}
-
-.friend-lifetime-stats {
-  display: flex;
-  justify-content: space-around;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 0.75rem;
-}
-
-.lifetime-stat-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.stat-icon {
-  color: #fbbf24;
-  font-size: 1.2rem;
-}
-
-/* Run Summary Modal Style */
-.summary-modal ion-card-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
+.auth-modal ion-content,
 .summary-modal ion-content {
   --background: transparent;
 }
-
-.summary-logo-icon {
-  width: 80px;
-  height: auto;
-  margin-bottom: 0.75rem;
-}
-
-.summary-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-top: 0.5rem;
-}
-
-.summary-stats-grid {
-  margin-top: 1.5rem;
-}
-
-.summary-stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 1rem 0.5rem;
-  min-height: 120px;
-  /* Removed background and border-radius to create a single card feel */
-}
-
-.summary-stat-item ion-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.summary-stat-item .stat-label {
-  font-size: 0.75rem;
-  margin-bottom: 0.25rem;
-}
-
-.summary-stat-item .stat-value {
-  font-size: 1.75rem;
-  line-height: 1.2;
-}
-
-.summary-stat-item .stat-unit {
-  font-size: 1rem;
-}
-
-/* Authentication Modal Styles */
-.auth-modal {
-  --background: transparent;
-}
-
-.auth-modal ion-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 400px; /* Or adjust as needed */
-  margin: auto;
-}
-
-.auth-card-header {
-  position: relative;
-  text-align: center;
-  padding-bottom: 1rem;
-}
-
-.auth-card-header ion-card-title {
-  font-size: 1.6rem;
-}
-
-.auth-logo {
-  width: 70px;
-  height: auto;
-  margin: 0 auto 1rem auto;
-}
-
-.input-with-icon {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  --padding-start: 12px;
-  --inner-padding-end: 12px;
-  --min-height: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.input-with-icon ion-icon {
-  font-size: 1.2rem;
-  color: #d1d5db;
-  margin-right: 8px;
-}
-
-.input-with-icon ion-input {
-  color: #fff;
-}
-.input-with-icon ion-select {
-  color: #fff;
-  width: 100%;
-}
-
-.auth-toggle {
-  text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-}
-
-.auth-toggle a {
-  color: var(--ion-color-primary);
-  font-weight: bold;
-  cursor: pointer;
-}
-.modal-close-button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  --color: var(--ion-color-medium);
-}
-
-/* Profile Page Styles */
-.profile-stats-card {
-  --padding-start: 1rem;
-  --padding-end: 1rem;
-  --padding-top: 1.5rem;
-  --padding-bottom: 1.5rem;
-}
-.profile-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.profile-picture-main {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid var(--ion-color-primary);
-  flex-shrink: 0;
-}
-.profile-info {
-  flex-grow: 1;
-}
-.profile-display-name {
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin: 0;
-  color: #fff;
-}
-.profile-level {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  color: #fbbf24;
-  margin-top: 4px;
-}
-.profile-lifetime-stats {
-  display: flex;
-  justify-content: space-around;
-  text-align: center;
-}
-.stat-block .stat-title {
-  font-size: 0.8rem;
-  color: #d1d5db;
-  text-transform: uppercase;
-  margin: 0;
-}
-.stat-block .stat-value {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: #fff;
-  margin: 4px 0 0 0;
-}
-
-/* Accordion Styles */
-.accordion-card {
-  padding: 0;
-  overflow: hidden;
-}
-.accordion-header {
-  --background: transparent;
-  --padding-start: 1rem;
-  --padding-end: 1rem;
-  cursor: pointer;
-  font-weight: 600;
-}
-.accordion-header ion-label {
-  font-weight: bold;
-}
-.accordion-header ion-icon {
-  transition: transform 0.3s ease-in-out;
-}
-.accordion-header ion-icon.rotate-icon {
-  transform: rotate(180deg);
-}
-.accordion-content {
-  padding: 0 1rem 1rem 1rem;
-  background-color: rgba(0, 0, 0, 0.1);
-}
-.full-width-button {
-  width: 100%;
-}
-
-/* Map Styles */
-#map {
+#map,
+#summary-map {
   height: 250px;
   width: auto;
   margin-bottom: 1rem;
@@ -3739,209 +3027,64 @@ ion-progress-bar {
   margin-left: 16px;
   margin-right: 16px;
 }
-
 #summary-map {
   height: 200px;
-  width: auto;
-  border-radius: 12px;
   margin: 1rem;
+}
+
+/* Live Tracking Modal Styles */
+.tracking-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+.tracking-label {
+  color: #d1d5db;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  margin: 0;
+}
+.tracking-value {
+  color: #ffffff;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 4px 0 0 0;
 }
 
 /* Hold to Stop Button Styles */
 .hold-to-stop-button {
   position: relative;
   width: 100%;
-  height: 50px;
-
-  background-color: #4d0f0f;
-  border-radius: var(--ion-border-radius-lg, 12px);
-  border: 1px solid var(--ion-color-danger-tint);
+  height: 60px;
+  background-color: #ef4444;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
   user-select: none;
-  -webkit-user-select: none;
-
-  transition: transform 0.1s ease-out;
+  -webkit-user-select: none; /* For Safari */
+  box-shadow: 0 4px 15px -5px rgba(239, 68, 68, 0.6);
 }
-
-.hold-to-stop-button:active {
-  transform: scale(0.98);
-}
-
 .hold-progress {
   position: absolute;
-  top: 0;
   left: 0;
+  top: 0;
+  bottom: 0;
+  background-color: #b91c1c;
   width: 100%;
-  height: 100%;
-
-  background-color: var(--ion-color-danger);
   transform-origin: left;
   transform: scaleX(0);
 }
-
 .hold-text {
   position: relative;
-  color: #fff;
-  font-weight: bold;
-  font-size: 1rem;
-  z-index: 1;
-
-  transition: letter-spacing 0.3s ease;
-}
-
-.hold-to-stop-button.is-holding .hold-text {
-  letter-spacing: 1.5px;
-}
-
-/* Shoe History Styles */
-.add-shoe-to-run-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.add-shoe-select-item {
-  --background: rgba(255, 255, 255, 0.1);
-  --padding-start: 0;
-  --inner-padding-end: 0;
-  --inner-padding-top: 0; /* Remove extra vertical space from the item wrapper */
-  --inner-padding-bottom: 0; /* Remove extra vertical space from the item wrapper */
-  --min-height: unset; /* Allow the item to shrink vertically */
-  border-radius: 12px;
-  width: fit-content;
-}
-
-.add-shoe-select-item ion-select {
-  font-size: 0.8rem;
-  --padding-start: 8px; /* Match horizontal padding of the pill */
-  --padding-end: 8px; /* Match horizontal padding of the pill */
-  --padding-top: 4px; /* Match vertical padding of the pill */
-  --padding-bottom: 4px; /* Match vertical padding of the pill */
-  color: #d1d5db;
-}
-
-.shoe-mileage-note {
   color: white;
-  font-size: 1.1rem; /* Bigger font size */
-  font-weight: 600; /* Bolder text for readability */
-}
-
-/* Run Description Styles */
-.run-description {
-  font-style: italic;
-  color: #f0f0f0;
-  padding: 10px 14px;
-  margin: 10px 0 4px 0;
-
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-
-  border-radius: 8px;
-
-  border-left: 3px solid #fbbf24;
-}
-
-/* Weather Summary Styles */
-.weather-summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 10px 16px;
-  margin: 0 auto 1.5rem auto;
-  width: fit-content;
-}
-
-.weather-icon {
-  font-size: 2rem;
-  color: #fbbf24; /* Yellow to match other accents */
-}
-
-.weather-description {
+  font-weight: bold;
   font-size: 1.1rem;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.weather-temp {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-/* Section Title Styles */
-.section-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #d1d5db;
-  text-transform: uppercase;
-  margin-top: 0;
-  margin-bottom: 0.25rem; /* Change this line */
-  text-align: center;
-}
-
-.latest-run-date-subtitle {
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #fbbf24; /* The requested yellow color */
-  margin-top: 0; /* Remove default paragraph margin */
-  margin-bottom: 0.75rem; /* Add space below the date */
-}
-
-/* Run Card Map Styles */
-.run-card-map {
-  height: 150px;
-  width: 100%;
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  background-color: #3a4b7a;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-/* Auth Separator Styles */
-.auth-separator {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  color: #d1d5db;
-  margin: 1.5rem 0;
-}
-.auth-separator::before,
-.auth-separator::after {
-  content: "";
-  flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-.auth-separator:not(:empty)::before {
-  margin-right: 0.5em;
-}
-.auth-separator:not(:empty)::after {
-  margin-left: 0.5em;
-}
-
-ion-header ion-toolbar {
-  --background: #1e3a8a;
-}
-
-/* Override header for the new style */
-ion-header.ion-no-border {
-  -webkit-box-shadow: none;
-  box-shadow: none;
-}
-ion-header.ion-no-border::after {
-  display: none;
-}
-ion-header.ion-no-border ion-toolbar {
-  --background: transparent;
-  --border-width: 0;
+  z-index: 1;
 }
 </style>
