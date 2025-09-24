@@ -30,6 +30,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonNote,
+  IonDatetime,
 } from "@ionic/vue";
 import {
   home,
@@ -190,6 +191,7 @@ const isEditProfileModalVisible = ref(false);
 const isUserProfileModalVisible = ref(false);
 const selectedFriendProfile = ref(null);
 const isFetchingFriendRuns = ref(false);
+const logRunDate = ref(new Date().toISOString());
 // State for hold-to-stop button
 const isHoldingStop = ref(false);
 const holdProgress = ref(0);
@@ -220,6 +222,7 @@ const mapRefs = ref({});
 let activeCardMaps = [];
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA";
+let userMarker = null;
 
 // --- COMPUTED ---
 const setMapRef = (key, el) => {
@@ -920,6 +923,9 @@ async function handleSummaryModalDismiss() {
   selectedShoeForRun.value = null;
   runSummaryDescription.value = "";
   destroySummaryMap();
+
+  await nextTick();
+  window.location.reload();
 }
 
 // --- WORKOUT METHODS ---
@@ -1063,11 +1069,11 @@ async function logRun() {
 
   const newRunData = {
     userId: user.value.uid,
-    date: new Date().toISOString(),
+    date: logRunDate.value,
     distance: dist,
     time: timeInSeconds,
     pace: timeInSeconds / dist,
-    timestamp: new Date(),
+    timestamp: new Date(logRunDate.value),
     description: description,
   };
   try {
@@ -1082,12 +1088,14 @@ async function logRun() {
     }
     await fetchUserRuns(user.value.uid);
 
+    // Clear inputs on success
     distanceInput.value = null;
     hoursInput.value = null;
     minutesInput.value = null;
     secondsInput.value = null;
     logRunDescription.value = "";
     selectedShoeForRun.value = null;
+    logRunDate.value = new Date().toISOString();
     isLogRunModalVisible.value = false;
     await presentToast("Run logged successfully!", "success");
   } catch (error) {
@@ -1114,9 +1122,10 @@ async function deleteRun(index) {
           const runToDelete = runHistory.value[index];
           if (runToDelete.id) {
             try {
+              // STEP 1: If a shoe is linked, update its stats by subtracting the run's data.
               if (runToDelete.shoeId) {
                 const shoeDocRef = doc(db, "shoes", runToDelete.shoeId);
-
+                // Use Firebase's `increment` with negative values to atomically subtract.
                 await updateDoc(shoeDocRef, {
                   totalDistance: increment(-runToDelete.distance),
                   totalTime: increment(-runToDelete.time),
@@ -1124,10 +1133,12 @@ async function deleteRun(index) {
                 });
               }
 
+              // STEP 2: Delete the actual run document.
               await deleteDoc(doc(db, "runs", runToDelete.id));
 
-              await fetchUserRuns(user.value.uid);
-              await fetchUserShoes(user.value.uid);
+              // STEP 3: Refresh local data to reflect changes in the UI.
+              await fetchUserRuns(user.value.uid); // Recalculates user's total stats.
+              await fetchUserShoes(user.value.uid); // Refreshes shoe list with updated mileage.
 
               await presentToast("Run deleted successfully.", "success");
             } catch (error) {
