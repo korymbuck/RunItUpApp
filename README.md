@@ -1,5 +1,20 @@
-# Vue 3 + Vite
+# RunItUp - PWA Run Tracker
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+RunItUp is a progressive web app designed to help runners track their workouts, monitor their stats, and connect with friends. Built with Vue.js and Ionic, it offers a seamless, app-like experience on any device.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Key Features
+
+- **Live Run Tracking:** Real-time distance, pace, and time tracking with a live map view.
+- **Run History:** Detailed log of all past runs, including route maps and stats.
+- **Social Feed:** Follow other users and see their latest activity.
+- **Gamification:** Level up and earn XP based on the distance you run.
+- **Shoe Mileage Tracking:** Add your running shoes and automatically track how many miles you've put on them.
+- **PWA Enabled:** Fully installable on mobile and desktop for offline access.
+
+## Tech Stack
+
+- **Frontend:** Vue 3 with Composition API
+- **UI Framework:** Ionic Vue
+- **Database & Auth:** Firebase (Firestore, Authentication, Storage)
+- **Mapping:** Leaflet with Mapbox tiles
+- **Animations:** GSAP

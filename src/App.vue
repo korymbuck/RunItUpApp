@@ -104,8 +104,8 @@ const validators = {
     return re.test(String(email).toLowerCase());
   },
   isStrongPassword: (password) => {
-    // Minimum 8 characters, at least one letter and one number
-    const re = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    // Minimum 8 characters, at least one letter and one number, allows special characters
+    const re = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
     return re.test(password);
   },
   sanitizeInput: (input) => {
@@ -1137,8 +1137,8 @@ async function deleteRun(index) {
               await deleteDoc(doc(db, "runs", runToDelete.id));
 
               // STEP 3: Refresh local data to reflect changes in the UI.
-              await fetchUserRuns(user.value.uid); // Recalculates user's total stats.
-              await fetchUserShoes(user.value.uid); // Refreshes shoe list with updated mileage.
+              await fetchUserRuns(user.value.uid);
+              await fetchUserShoes(user.value.uid);
 
               await presentToast("Run deleted successfully.", "success");
             } catch (error) {
@@ -1168,7 +1168,7 @@ function startHoldStop() {
   holdProgress.value = 0;
 
   const holdDuration = 2000; // 2 seconds
-  const intervalDuration = 10; // Update progress smoothly
+  const intervalDuration = 10;
 
   // Set a timeout that will trigger the actual stopWorkout function
   holdTimer = setTimeout(() => {

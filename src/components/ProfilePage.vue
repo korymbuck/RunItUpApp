@@ -21,7 +21,9 @@
           color="warning"
           class="ion-margin-vertical"
         ></ion-progress-bar>
-        <div class="profile-lifetime-stats">
+        <!-- Unified Stats Section -->
+        <div class="profile-stats-grid">
+          <!-- Lifetime Stats -->
           <div class="stat-block">
             <p class="stat-title">Total Distance</p>
             <p class="stat-value">{{ totalDistance.toFixed(2) }} mi</p>
@@ -29,6 +31,40 @@
           <div class="stat-block">
             <p class="stat-title">Total Time</p>
             <p class="stat-value">{{ formatTime(totalTime, true) }}</p>
+          </div>
+
+          <!-- Divider / Subheader -->
+          <div class="stats-divider">
+            <span>Personal Records</span>
+          </div>
+
+          <!-- Personal Records -->
+          <div class="stat-block">
+            <p class="stat-title">Longest Run</p>
+            <p class="stat-value">
+              {{ personalRecords.longestDistance.toFixed(2) }} mi
+            </p>
+          </div>
+          <div class="stat-block">
+            <p class="stat-title">Fastest Mile</p>
+            <p class="stat-value" v-if="personalRecords.fastestMile">
+              {{ formatTime(personalRecords.fastestMile, true) }}
+            </p>
+            <p class="stat-value" v-else>-</p>
+          </div>
+          <div class="stat-block">
+            <p class="stat-title">Fastest 5K</p>
+            <p class="stat-value" v-if="personalRecords.fastest5k">
+              {{ formatTime(personalRecords.fastest5k, true) }}
+            </p>
+            <p class="stat-value" v-else>-</p>
+          </div>
+          <div class="stat-block">
+            <p class="stat-title">Fastest 10K</p>
+            <p class="stat-value" v-if="personalRecords.fastest10k">
+              {{ formatTime(personalRecords.fastest10k, true) }}
+            </p>
+            <p class="stat-value" v-else>-</p>
           </div>
         </div>
       </ion-card-content>
@@ -168,6 +204,7 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
 import {
   IonCard,
   IonCardHeader,
@@ -185,7 +222,8 @@ import {
 } from "@ionic/vue";
 import { trash, footsteps } from "ionicons/icons";
 
-defineProps({
+// Capture Props
+const props = defineProps({
   displayName: String,
   photoURL: String,
   currentLevel: Object,
@@ -208,6 +246,41 @@ defineEmits([
   "addShoeToPastRun",
   "showMoreRuns",
 ]);
+
+// --- Personal Records Computed ---
+const personalRecords = computed(() => {
+  const runs = props.runHistory || [];
+  if (runs.length === 0) {
+    return {
+      longestDistance: 0,
+      fastestMile: null,
+      fastest5k: null,
+      fastest10k: null,
+    };
+  }
+
+  // Longest distance
+  const longest = Math.max(...runs.map((r) => r.distance || 0));
+
+  // Helper to find fastest time for a target distance
+  const getFastestTime = (targetDist, tolerance = 0.2) => {
+    const candidates = runs.filter(
+      (r) =>
+        r.distance >= targetDist - tolerance &&
+        r.distance <= targetDist + tolerance &&
+        r.time
+    );
+    if (candidates.length === 0) return null;
+    return Math.min(...candidates.map((r) => r.time));
+  };
+
+  return {
+    longestDistance: longest,
+    fastestMile: getFastestTime(1),
+    fastest5k: getFastestTime(3.1),
+    fastest10k: getFastestTime(6.2),
+  };
+});
 </script>
 
 <style scoped>
@@ -275,14 +348,100 @@ defineEmits([
 }
 /* Style for the shoe list items */
 .run-history-item ion-label h2 {
-  color: #ffffff; /* Ensure brand name is white */
-  font-size: 1.1rem; /* Increase font size */
+  color: #ffffff;
+  font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 4px; /* Add a little space between brand and model */
+  margin-bottom: 4px;
 }
 
 .run-history-item ion-label p {
-  color: #f0f0f0; /* Change model name from grey to a bright off-white */
-  font-size: 0.9rem; /* Increase font size */
+  color: #f0f0f0;
+  font-size: 0.9rem;
+}
+
+/* PR Styles */
+.profile-pr-stats {
+  margin-top: 1.5rem;
+}
+
+.pr-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffc409;
+  margin-bottom: 0.5rem;
+}
+
+.pr-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.pr-block .stat-title {
+  font-size: 0.75rem;
+  color: #d1d5db;
+  text-transform: uppercase;
+}
+
+.pr-block .stat-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.profile-stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.profile-stats-grid .stat-block {
+  flex: 1 1 40%;
+  min-width: 120px;
+}
+
+/* Unified Stats Grid */
+.profile-stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+/* Divider label inside grid */
+.stats-divider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.stats-divider::before,
+.stats-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.stats-divider::before {
+  margin-right: 0.75rem;
+}
+
+.stats-divider::after {
+  margin-left: 0.75rem;
+}
+
+.stats-divider span {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #facc15;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 </style>
