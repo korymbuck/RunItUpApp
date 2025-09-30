@@ -31,6 +31,7 @@ import {
   IonSelectOption,
   IonNote,
   IonDatetime,
+  IonAvatar,
 } from "@ionic/vue";
 import {
   home,
@@ -54,6 +55,12 @@ import {
   snowOutline,
   thunderstormOutline,
   partlySunnyOutline,
+  addCircleOutline,
+  logInOutline,
+  add,
+  camera,
+  trophy,
+  shareSocial,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -81,6 +88,8 @@ import {
   limit,
   updateDoc,
   increment,
+  writeBatch,
+  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { gsap } from "gsap";
 import {
@@ -223,6 +232,19 @@ let activeCardMaps = [];
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1Ijoia29yeW1idWNrIiwiYSI6ImNtZXJheHJveTA0a3Aya3B4Y3JndGthN2MifQ.2qaE0m-37OvguYab1jiLmA";
 let userMarker = null;
+
+// --- NEW RUN CLUB STATE ---
+const userRunClubs = ref([]);
+const isCreateClubModalVisible = ref(false);
+const isJoinClubModalVisible = ref(false);
+const isRunClubDetailModalVisible = ref(false);
+const isAllMembersModalVisible = ref(false);
+const newClubName = ref("");
+const clubJoinCodeInput = ref("");
+const clubPictureFile = ref(null);
+const clubPictureInput = ref(null);
+const selectedRunClubDetails = ref(null); // Will hold { clubInfo, membersWithStats }
+const isClubDataLoading = ref(false);
 
 // --- COMPUTED ---
 const setMapRef = (key, el) => {
@@ -1644,6 +1666,236 @@ async function handleGoogleSignIn() {
   }
 }
 
+// --- RUN CLUB METHODS ---
+function generateJoinCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+function triggerClubPictureUpload() {
+  clubPictureInput.value.click();
+}
+
+function handleClubPictureSelect(event) {
+  const file = event.target.files[0];
+  if (file) {
+    clubPictureFile.value = file;
+  }
+}
+
+async function createRunClub() {
+  const clubName = newClubName.value.trim();
+  if (!clubName || !clubPictureFile.value || !user.value) {
+    return presentToast("Please provide a club name and picture.");
+  }
+
+  isLoading.value = true;
+  isCreateClubModalVisible.value = false;
+
+  try {
+    const joinCode = generateJoinCode();
+    const filePath = `club-pictures/${user.value.uid}_${Date.now()}`;
+    const fileRef = storageRef(storage, filePath);
+    await uploadBytes(fileRef, clubPictureFile.value);
+    const clubPictureURL = await getDownloadURL(fileRef);
+
+    const batch = writeBatch(db);
+    const clubRef = doc(collection(db, "runClubs"));
+
+    // 1. Main public club document
+    batch.set(clubRef, {
+      name: clubName,
+      name_lowercase: clubName.toLowerCase(),
+      creatorId: user.value.uid,
+      clubPictureURL,
+      joinCode,
+      createdAt: Timestamp.now(),
+    });
+
+    // 2. Creator as the first member
+    const userInClubRef = doc(
+      db,
+      `runClubs/${clubRef.id}/members`,
+      user.value.uid
+    );
+    batch.set(userInClubRef, {
+      displayName: displayName.value,
+      photoURL: photoURL.value || null,
+      joinedAt: Timestamp.now(),
+    });
+
+    // 3. Reference in the user's private profile
+    const clubInUserRef = doc(
+      db,
+      `users/${user.value.uid}/runClubs`,
+      clubRef.id
+    );
+    batch.set(clubInUserRef, {
+      clubName: clubName,
+      clubPictureURL: clubPictureURL,
+      joinCode: joinCode,
+    });
+
+    await batch.commit();
+
+    // --- NEW RELIABLE FIX ---
+    // After the write is confirmed, re-fetch the entire list from the server.
+    await fetchUserRunClubs(user.value.uid);
+
+    await presentToast("Run Club created successfully!", "success");
+
+    // Find the new club in the freshly fetched list to open its details
+    const newClubForModal = userRunClubs.value.find((c) => c.id === clubRef.id);
+    if (newClubForModal) {
+      await openRunClubDetailModal(newClubForModal);
+    }
+
+    newClubName.value = "";
+    clubPictureFile.value = null;
+  } catch (error) {
+    console.error("Error creating run club:", error);
+    await presentToast("Failed to create club. Please try again.", "danger");
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function joinRunClub() {
+  const joinCode = clubJoinCodeInput.value.trim().toUpperCase();
+  if (!joinCode || !user.value)
+    return presentToast("Please enter a join code.");
+
+  isLoading.value = true;
+  isJoinClubModalVisible.value = false;
+
+  try {
+    const q = query(
+      collection(db, "runClubs"),
+      where("joinCode", "==", joinCode)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) throw new Error("Invalid join code.");
+
+    const clubDoc = querySnapshot.docs[0];
+    const clubId = clubDoc.id;
+    const clubData = clubDoc.data();
+
+    const memberDoc = await getDoc(
+      doc(db, `runClubs/${clubId}/members`, user.value.uid)
+    );
+    if (memberDoc.exists()) {
+      return presentToast(`You are already in ${clubData.name}.`, "warning");
+    }
+
+    const batch = writeBatch(db);
+    const userInClubRef = doc(db, `runClubs/${clubId}/members`, user.value.uid);
+    batch.set(userInClubRef, {
+      displayName: displayName.value,
+      photoURL: photoURL.value || null,
+      joinedAt: Timestamp.now(),
+    });
+
+    const clubInUserRef = doc(db, `users/${user.value.uid}/runClubs`, clubId);
+    batch.set(clubInUserRef, {
+      clubName: clubData.name,
+      clubPictureURL: clubData.clubPictureURL,
+      joinCode: clubData.joinCode,
+    });
+
+    await batch.commit();
+
+    // --- NEW RELIABLE FIX ---
+    // After joining, re-fetch the entire list from the server.
+    await fetchUserRunClubs(user.value.uid);
+
+    await presentToast(`Successfully joined ${clubData.name}!`, "success");
+    clubJoinCodeInput.value = "";
+  } catch (error) {
+    console.error("Error joining club:", error);
+    await presentToast(error.message || "Could not join club.", "danger");
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function fetchUserRunClubs(userId) {
+  try {
+    const q = query(
+      collection(db, `users/${userId}/runClubs`),
+      orderBy("clubName")
+    );
+    const querySnapshot = await getDocs(q);
+    userRunClubs.value = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error("Error fetching user run clubs:", error);
+    presentToast("Could not load your run clubs.", "danger");
+  }
+}
+
+async function openRunClubDetailModal(club) {
+  isRunClubDetailModalVisible.value = true;
+  isClubDataLoading.value = true;
+  selectedRunClubDetails.value = { clubInfo: club, members: [] };
+
+  try {
+    // Define the weekly boundaries
+    const now = new Date();
+    const startOfWeek = getStartOfWeek(now); // Sunday 12:00 AM
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(endOfWeek.getDate() + 7); // Next Sunday 12:00 AM
+
+    // 1. Fetch all members of the club
+    const membersQuery = query(collection(db, `runClubs/${club.id}/members`));
+    const membersSnapshot = await getDocs(membersQuery);
+    const membersData = membersSnapshot.docs.map((doc) => ({
+      uid: doc.id,
+      ...doc.data(),
+      weeklyDistance: 0,
+    }));
+
+    // 2. For each member, fetch their runs for the current week
+    const memberPromises = membersData.map(async (member) => {
+      const runsQuery = query(
+        collection(db, "runs"),
+        where("userId", "==", member.uid),
+        where("timestamp", ">=", startOfWeek),
+        where("timestamp", "<", endOfWeek)
+      );
+      const runsSnapshot = await getDocs(runsQuery);
+      const weeklyDistance = runsSnapshot.docs.reduce(
+        (total, doc) => total + doc.data().distance,
+        0
+      );
+      return { ...member, weeklyDistance };
+    });
+
+    // 3. Wait for all run data to be fetched and calculated
+    const membersWithStats = await Promise.all(memberPromises);
+
+    // 4. Sort by distance for the leaderboard
+    membersWithStats.sort((a, b) => b.weeklyDistance - a.weeklyDistance);
+
+    selectedRunClubDetails.value = {
+      clubInfo: club,
+      members: membersWithStats,
+    };
+  } catch (error) {
+    console.error("Error loading club details:", error);
+    await presentToast("Could not load club leaderboard.", "danger");
+    isRunClubDetailModalVisible.value = false;
+  } finally {
+    isClubDataLoading.value = false;
+  }
+}
+
 // --- Scroll handler for 3D card effect ---
 let scrollEl = null;
 const handleScroll = () => {
@@ -1682,6 +1934,7 @@ onMounted(() => {
         // Fetch primary data
         await fetchUserRuns(authUser.uid);
         await fetchUserShoes(authUser.uid);
+        await fetchUserRunClubs(authUser.uid);
 
         // Setup listeners and UI effects
         await setupSocialListeners();
@@ -1708,6 +1961,7 @@ onMounted(() => {
       runHistory.value = [];
       friends.value = [];
       userShoes.value = [];
+      userRunClubs.value = [];
       recalculateStatsFromHistory();
       cleanupListeners();
       if (scrollEl) {
@@ -1798,9 +2052,13 @@ onUnmounted(() => {
               :getLevelForXp="getLevelForXp"
               :getProgressForXp="getProgressForXp"
               :setMapRef="setMapRef"
+              :runClubs="userRunClubs"
               @open-follow-modal="openFollowModal"
               @open-user-profile-modal="openUserProfileModal"
               @unfollow-user="unfollowUser"
+              @open-create-club-modal="isCreateClubModalVisible = true"
+              @open-join-club-modal="isJoinClubModalVisible = true"
+              @open-run-club-detail-modal="openRunClubDetailModal"
             />
 
             <ProfilePage
@@ -2549,6 +2807,221 @@ onUnmounted(() => {
         </ion-card>
       </ion-content>
     </ion-modal>
+
+    <!-- Create Club Modal -->
+    <ion-modal :is-open="isCreateClubModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Create a Run Club</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isCreateClubModalVisible = false"
+              ><ion-icon :icon="closeCircle"></ion-icon
+            ></ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-content>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-input
+                label="Club Name"
+                label-placement="floating"
+                v-model="newClubName"
+              ></ion-input>
+            </ion-item>
+            <ion-button
+              expand="block"
+              fill="outline"
+              @click="triggerClubPictureUpload"
+              class="ion-margin-vertical"
+            >
+              <ion-icon :icon="camera" slot="start"></ion-icon>
+              {{
+                clubPictureFile ? clubPictureFile.name : "Upload Club Picture"
+              }}
+            </ion-button>
+            <input
+              type="file"
+              @change="handleClubPictureSelect"
+              ref="clubPictureInput"
+              style="display: none"
+              accept="image/*"
+            />
+            <ion-button
+              expand="block"
+              @click="createRunClub"
+              class="yellow-button"
+              >Create Club</ion-button
+            >
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Join Club Modal -->
+    <ion-modal :is-open="isJoinClubModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Join a Run Club</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isJoinClubModalVisible = false"
+              ><ion-icon :icon="closeCircle"></ion-icon
+            ></ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-card class="styled-card">
+          <ion-card-content>
+            <ion-item lines="none" class="input-with-icon">
+              <ion-input
+                label="Club Join Code"
+                label-placement="floating"
+                v-model="clubJoinCodeInput"
+              ></ion-input>
+            </ion-item>
+            <ion-button
+              expand="block"
+              @click="joinRunClub"
+              class="ion-margin-top yellow-button"
+              >Join Club</ion-button
+            >
+          </ion-card-content>
+        </ion-card>
+      </ion-content>
+    </ion-modal>
+
+    <!-- Run Club Detail Modal -->
+    <ion-modal :is-open="isRunClubDetailModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>{{
+            selectedRunClubDetails && selectedRunClubDetails.clubInfo
+              ? selectedRunClubDetails.clubInfo.clubName
+              : "Club Details"
+          }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isRunClubDetailModalVisible = false"
+              ><ion-icon :icon="closeCircle"></ion-icon
+            ></ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div v-if="selectedRunClubDetails">
+          <ion-card class="styled-card club-detail-card">
+            <ion-card-content>
+              <div class="club-header">
+                <img
+                  :src="
+                    selectedRunClubDetails.clubInfo.clubPictureURL ||
+                    '/default-avatar.png'
+                  "
+                  class="club-picture-main"
+                />
+                <div class="club-info">
+                  <h2 class="club-display-name">
+                    {{ selectedRunClubDetails.clubInfo.clubName }}
+                  </h2>
+                  <ion-button fill="clear" size="small" class="share-button">
+                    <ion-icon :icon="shareSocial" slot="start"></ion-icon>
+                    Code:
+                    <strong>{{
+                      selectedRunClubDetails.clubInfo.joinCode
+                    }}</strong>
+                  </ion-button>
+                </div>
+              </div>
+              <div class="club-members-preview">
+                <h3 class="section-title">Members</h3>
+                <div class="member-avatars">
+                  <ion-avatar
+                    v-for="member in selectedRunClubDetails.members.slice(0, 5)"
+                    :key="member.uid"
+                    class="member-avatar"
+                  >
+                    <img
+                      :src="member.photoURL || '/default-avatar.png'"
+                      :alt="member.displayName"
+                    />
+                  </ion-avatar>
+                  <ion-avatar
+                    v-if="selectedRunClubDetails.members.length > 5"
+                    class="member-avatar more-members-avatar"
+                    @click="isAllMembersModalVisible = true"
+                  >
+                    <span
+                      >+{{ selectedRunClubDetails.members.length - 5 }}</span
+                    >
+                  </ion-avatar>
+                </div>
+              </div>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="styled-card">
+            <ion-card-header>
+              <ion-card-title>
+                <ion-icon :icon="trophy" color="warning"></ion-icon> Weekly
+                Leaderboard
+              </ion-card-title>
+            </ion-card-header>
+            <ion-card-content>
+              <div v-if="isClubDataLoading" class="ion-text-center">
+                <ion-spinner></ion-spinner>
+                <p>Calculating leaderboard...</p>
+              </div>
+              <ion-list v-else lines="none">
+                <ion-item
+                  v-for="(member, index) in selectedRunClubDetails.members"
+                  :key="member.uid"
+                  class="leaderboard-item"
+                >
+                  <span class="leaderboard-rank">{{ index + 1 }}</span>
+                  <ion-avatar slot="start" class="leaderboard-avatar">
+                    <img :src="member.photoURL || '/default-avatar.png'" />
+                  </ion-avatar>
+                  <ion-label>
+                    <h2>{{ member.displayName }}</h2>
+                  </ion-label>
+                  <ion-note slot="end" class="leaderboard-distance">
+                    {{ member.weeklyDistance.toFixed(2) }} mi
+                  </ion-note>
+                </ion-item>
+              </ion-list>
+            </ion-card-content>
+          </ion-card>
+        </div>
+      </ion-content>
+    </ion-modal>
+
+    <!-- All Members Modal -->
+    <ion-modal :is-open="isAllMembersModalVisible">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>All Club Members</ion-title>
+          <ion-buttons slot="end">
+            <ion-button @click="isAllMembersModalVisible = false"
+              ><ion-icon :icon="closeCircle"></ion-icon
+            ></ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-list v-if="selectedRunClubDetails">
+          <ion-item
+            v-for="member in selectedRunClubDetails.members"
+            :key="member.uid"
+          >
+            <ion-avatar slot="start">
+              <img :src="member.photoURL || '/default-avatar.png'" />
+            </ion-avatar>
+            <ion-label>{{ member.displayName }}</ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-content>
+    </ion-modal>
   </ion-app>
 </template>
 
@@ -2568,6 +3041,99 @@ onUnmounted(() => {
 </style>
 
 <style scoped>
+/* --- Run Club Detail Modal Styles --- */
+.club-detail-card {
+  text-align: center;
+}
+.club-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.club-picture-main {
+  width: 100px;
+  height: 100px;
+  border-radius: 20px;
+  object-fit: cover;
+  border: 4px solid var(--ion-color-primary);
+}
+.club-display-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+.share-button {
+  --color: #d1d5db;
+  --color-activated: #fff;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+.share-button strong {
+  margin-left: 6px;
+  color: #fbbf24;
+}
+.club-members-preview {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+}
+.member-avatars {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+.member-avatar {
+  width: 45px;
+  height: 45px;
+  border: 2px solid #fff;
+  margin-left: -15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.member-avatar:first-child {
+  margin-left: 0;
+}
+.more-members-avatar {
+  background: var(--ion-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.more-members-avatar span {
+  color: white;
+  font-weight: bold;
+}
+.leaderboard-item {
+  --background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  --padding-start: 8px;
+}
+.leaderboard-rank {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: #fbbf24;
+  width: 30px;
+  text-align: center;
+}
+.leaderboard-avatar {
+  margin-left: 8px;
+  margin-right: 12px;
+}
+.leaderboard-item h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+.leaderboard-distance {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
 /* --- 3D Glassmorphism & Global Styles --- */
 ion-header.ion-no-border ion-toolbar {
   --background: transparent;
@@ -3149,15 +3715,15 @@ ion-spinner {
 
 .shoe-brand-name {
   font-size: 1.2rem;
-  font-weight: 600; /* Bolder for prominence */
+  font-weight: 600;
   color: #ffffff;
   margin-bottom: 4px;
 }
 
 .shoe-model-name {
   font-size: 1.1rem;
-  font-weight: 400; /* Normal weight */
-  color: #ffffff; /* Sets model name to pure white */
+  font-weight: 400;
+  color: #ffffff;
   margin: 0;
 }
 </style>

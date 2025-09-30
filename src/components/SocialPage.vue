@@ -1,5 +1,46 @@
 <template>
   <div class="ion-padding">
+    <!-- Run Clubs Section -->
+    <ion-card class="styled-card">
+      <ion-card-header>
+        <ion-card-title>Run Clubs</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="run-club-actions">
+          <ion-button
+            @click="$emit('openCreateClubModal')"
+            class="yellow-button"
+            ><ion-icon :icon="addCircleOutline" slot="start"></ion-icon>Create
+            Club</ion-button
+          >
+          <ion-button fill="outline" @click="$emit('openJoinClubModal')"
+            ><ion-icon :icon="logInOutline" slot="start"></ion-icon>Join
+            Club</ion-button
+          >
+        </div>
+
+        <div v-if="runClubs.length > 0" class="run-club-list">
+          <div
+            v-for="club in runClubs"
+            :key="club.id"
+            class="run-club-item"
+            @click="$emit('openRunClubDetailModal', club)"
+          >
+            <img
+              :src="club.clubPictureURL || '/default-avatar.png'"
+              class="run-club-avatar"
+            />
+            <span class="run-club-name">{{ club.clubName }}</span>
+          </div>
+        </div>
+        <p v-else class="ion-text-center ion-padding-top no-data-text">
+          You haven't joined any run clubs yet.
+        </p>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Social Feed Section -->
+    <h2 class="feed-header">Your Feed</h2>
     <ion-button
       expand="block"
       @click="$emit('openFollowModal')"
@@ -150,8 +191,23 @@
 </template>
 
 <script setup>
-import { IonButton, IonIcon, IonProgressBar } from "@ionic/vue";
-import { people, trash, rocket, timeOutline } from "ionicons/icons";
+import {
+  IonButton,
+  IonIcon,
+  IonProgressBar,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+} from "@ionic/vue";
+import {
+  people,
+  trash,
+  rocket,
+  timeOutline,
+  addCircleOutline,
+  logInOutline,
+} from "ionicons/icons";
 
 defineProps({
   friends: Array,
@@ -160,12 +216,66 @@ defineProps({
   getLevelForXp: Function,
   getProgressForXp: Function,
   setMapRef: Function,
+  runClubs: Array,
 });
 
-defineEmits(["openFollowModal", "openUserProfileModal", "unfollowUser"]);
+defineEmits([
+  "openFollowModal",
+  "openUserProfileModal",
+  "unfollowUser",
+  "openCreateClubModal",
+  "openJoinClubModal",
+  "openRunClubDetailModal",
+]);
 </script>
 
 <style scoped>
+/* Run Clubs Section */
+.run-club-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.run-club-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.run-club-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.run-club-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.run-club-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--ion-color-primary);
+}
+.run-club-name {
+  font-weight: 600;
+  color: #fff;
+}
+.feed-header {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
 /* Friend Card Specific Styles */
 .friend-list {
   display: flex;
