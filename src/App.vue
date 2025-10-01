@@ -3412,9 +3412,21 @@ ion-content {
 
 .modal-close-button {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 1.8rem;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+
+  width: 25px;
+  height: 25px;
+
+  --padding-start: 0;
+  --padding-end: 0;
+  margin: 0;
+}
+
+.modal-close-button ion-icon {
+  font-size: 2.5rem;
+  color: #fff;
 }
 :deep(.profile-header) {
   display: flex;
