@@ -1011,6 +1011,36 @@ export default defineConfig({
 });
 </file>
 
+<file path="package.json">
+{
+  "name": "runitup-final",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/haptics": "^7.0.1",
+    "@capacitor/ios": "^7.4.2",
+    "@ionic/vue": "^8.6.5",
+    "gsap": "^3.13.0",
+    "ionicons": "^8.0.13",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "vite": "^7.0.4"
+  }
+}
+</file>
+
 <file path="src/components/SocialPage.vue">
 <template>
   <div class="ion-padding">
@@ -1431,36 +1461,6 @@ defineEmits([
   color: #fff;
 }
 </style>
-</file>
-
-<file path="package.json">
-{
-  "name": "runitup-final",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@capacitor/android": "^7.4.2",
-    "@capacitor/cli": "^7.4.2",
-    "@capacitor/core": "^7.4.2",
-    "@capacitor/haptics": "^7.0.1",
-    "@capacitor/ios": "^7.4.2",
-    "@ionic/vue": "^8.6.5",
-    "gsap": "^3.13.0",
-    "ionicons": "^8.0.13",
-    "vue": "^3.5.17",
-    "vue-router": "^4.5.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.0",
-    "vite": "^7.0.4"
-  }
-}
 </file>
 
 <file path="src/main.js">

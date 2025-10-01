@@ -141,17 +141,17 @@ const contentRef = ref(null);
 // --- STATE ---
 const isLoading = ref(true);
 const levels = [
-  { name: "Bronze", emoji: "🥉", xp: 25 },
-  { name: "Silver", emoji: "🥈", xp: 50 },
-  { name: "Gold", emoji: "🥇", xp: 100 },
-  { name: "Platinum", emoji: "⚪", xp: 200 },
-  { name: "Emerald", emoji: "❇️", xp: 400 },
-  { name: "Sapphire", emoji: "🔷", xp: 800 },
-  { name: "Ruby", emoji: "♦️", xp: 1600 },
-  { name: "Diamond", emoji: "💎", xp: 3200 },
-  { name: "Onyx", emoji: "⚫", xp: 6400 },
-  { name: "Obsidian", emoji: "🖤", xp: 12800 },
-  { name: "Mythic", emoji: "🌟", xp: 25600 },
+  { name: "Bronze", emoji: "🥉", xp: 2500 }, // 25 miles
+  { name: "Silver", emoji: "🥈", xp: 5000 }, // 50 miles
+  { name: "Gold", emoji: "🥇", xp: 10000 }, // 100 miles
+  { name: "Platinum", emoji: "⚪", xp: 20000 }, // 200 miles
+  { name: "Emerald", emoji: "❇️", xp: 40000 }, // 400 miles
+  { name: "Sapphire", emoji: "🔷", xp: 80000 }, // 800 miles
+  { name: "Ruby", emoji: "♦️", xp: 160000 }, // 1600 miles
+  { name: "Diamond", emoji: "💎", xp: 320000 }, // 3200 miles
+  { name: "Onyx", emoji: "⚫", xp: 640000 }, // 6400 miles
+  { name: "Obsidian", emoji: "🖤", xp: 1280000 }, // 12800 miles
+  { name: "Mythic", emoji: "🌟", xp: 2560000 }, // 25600 miles
   { name: "Legendary", emoji: "🏆", xp: Infinity },
 ];
 const user = ref(null);
@@ -300,7 +300,7 @@ const displayedRuns = computed(() =>
   runHistory.value.slice(0, visibleRunsCount.value)
 );
 const lastRunXp = computed(() =>
-  lastRunSummary.value ? Math.floor(lastRunSummary.value.distance) : 0
+  lastRunSummary.value ? Math.floor(lastRunSummary.value.distance * 100) : 0
 );
 
 const getStartOfWeek = (date, offset = 0) => {
@@ -1477,7 +1477,7 @@ async function recalculateStatsFromHistory() {
   }
   totalDistance.value = newTotalDistance;
   totalTime.value = newTotalTime;
-  xp.value = newTotalDistance;
+  xp.value = newTotalDistance * 100;
   animateStat("totalDistance", oldTotalDistance, totalDistance.value);
   animateStat("totalTime", oldTotalTime, totalTime.value);
   animateStat("xp", oldXp, xp.value);
@@ -3416,8 +3416,8 @@ ion-content {
   right: 10px;
   z-index: 10;
 
-  width: 25px;
-  height: 25px;
+  width: 40px;
+  height: 40px;
 
   --padding-start: 0;
   --padding-end: 0;
