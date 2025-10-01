@@ -375,6 +375,7 @@ defineEmits([
   margin: 0;
   width: 100%;
   text-align: center;
+  margin-bottom: 0.5rem;
 }
 .run-description {
   font-style: italic;
