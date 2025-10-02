@@ -1764,17 +1764,17 @@ const contentRef = ref(null);
 // --- STATE ---
 const isLoading = ref(true);
 const levels = [
-  { name: "Bronze", emoji: "🥉", xp: 25 },
-  { name: "Silver", emoji: "🥈", xp: 50 },
-  { name: "Gold", emoji: "🥇", xp: 100 },
-  { name: "Platinum", emoji: "⚪", xp: 200 },
-  { name: "Emerald", emoji: "❇️", xp: 400 },
-  { name: "Sapphire", emoji: "🔷", xp: 800 },
-  { name: "Ruby", emoji: "♦️", xp: 1600 },
-  { name: "Diamond", emoji: "💎", xp: 3200 },
-  { name: "Onyx", emoji: "⚫", xp: 6400 },
-  { name: "Obsidian", emoji: "🖤", xp: 12800 },
-  { name: "Mythic", emoji: "🌟", xp: 25600 },
+  { name: "Bronze", emoji: "🥉", xp: 2500 }, // 25 miles
+  { name: "Silver", emoji: "🥈", xp: 5000 }, // 50 miles
+  { name: "Gold", emoji: "🥇", xp: 10000 }, // 100 miles
+  { name: "Platinum", emoji: "⚪", xp: 20000 }, // 200 miles
+  { name: "Emerald", emoji: "❇️", xp: 40000 }, // 400 miles
+  { name: "Sapphire", emoji: "🔷", xp: 80000 }, // 800 miles
+  { name: "Ruby", emoji: "♦️", xp: 160000 }, // 1600 miles
+  { name: "Diamond", emoji: "💎", xp: 320000 }, // 3200 miles
+  { name: "Onyx", emoji: "⚫", xp: 640000 }, // 6400 miles
+  { name: "Obsidian", emoji: "🖤", xp: 1280000 }, // 12800 miles
+  { name: "Mythic", emoji: "🌟", xp: 2560000 }, // 25600 miles
   { name: "Legendary", emoji: "🏆", xp: Infinity },
 ];
 const user = ref(null);
@@ -1923,7 +1923,7 @@ const displayedRuns = computed(() =>
   runHistory.value.slice(0, visibleRunsCount.value)
 );
 const lastRunXp = computed(() =>
-  lastRunSummary.value ? Math.floor(lastRunSummary.value.distance) : 0
+  lastRunSummary.value ? Math.floor(lastRunSummary.value.distance * 100) : 0
 );
 
 const getStartOfWeek = (date, offset = 0) => {
@@ -3100,7 +3100,7 @@ async function recalculateStatsFromHistory() {
   }
   totalDistance.value = newTotalDistance;
   totalTime.value = newTotalTime;
-  xp.value = newTotalDistance;
+  xp.value = newTotalDistance * 100;
   animateStat("totalDistance", oldTotalDistance, totalDistance.value);
   animateStat("totalTime", oldTotalTime, totalTime.value);
   animateStat("xp", oldXp, xp.value);
@@ -3444,6 +3444,56 @@ async function joinRunClub() {
   } finally {
     isLoading.value = false;
   }
+}
+
+async function leaveRunClub() {
+  if (!selectedRunClubDetails.value || !user.value) return;
+
+  const club = selectedRunClubDetails.value.clubInfo;
+
+  const alert = await alertController.create({
+    header: "Leave Club",
+    message: `Are you sure you want to leave ${club.clubName}? This action cannot be undone.`,
+    cssClass: "custom-alert",
+    buttons: [
+      { text: "Cancel", role: "cancel" },
+      {
+        text: "Leave",
+        role: "destructive",
+        handler: async () => {
+          try {
+            const clubId = club.id;
+            const userId = user.value.uid;
+
+            const batch = writeBatch(db);
+
+            // 1. Delete the user from the club's member list
+            const memberRef = doc(db, `runClubs/${clubId}/members`, userId);
+            batch.delete(memberRef);
+
+            // 2. Delete the club from the user's profile
+            const userClubRef = doc(db, `users/${userId}/runClubs`, clubId);
+            batch.delete(userClubRef);
+
+            await batch.commit();
+
+            isRunClubDetailModalVisible.value = false;
+            await presentToast(`You have left ${club.clubName}.`, "success");
+
+            await fetchUserRunClubs(userId);
+          } catch (error) {
+            console.error("Error leaving run club:", error);
+            await presentToast(
+              "Failed to leave the club. Please try again.",
+              "danger"
+            );
+          }
+        },
+      },
+    ],
+  });
+
+  await alert.present();
 }
 
 async function fetchUserRunClubs(userId) {
@@ -4536,6 +4586,13 @@ onUnmounted(() => {
           <ion-card class="styled-card club-detail-card">
             <ion-card-content>
               <div class="club-header">
+                <ion-button
+                  fill="clear"
+                  class="leave-club-button"
+                  @click="leaveRunClub"
+                >
+                  <ion-icon slot="icon-only" :icon="logOut"></ion-icon>
+                </ion-button>
                 <img
                   :src="
                     selectedRunClubDetails.clubInfo.clubPictureURL ||
@@ -5039,8 +5096,8 @@ ion-content {
   right: 10px;
   z-index: 10;
 
-  width: 25px;
-  height: 25px;
+  width: 40px;
+  height: 40px;
 
   --padding-start: 0;
   --padding-end: 0;
@@ -5360,6 +5417,18 @@ ion-spinner {
   font-weight: 400;
   color: #ffffff;
   margin: 0;
+}
+
+.club-detail-card ion-card-content {
+  position: relative; /* Establishes a positioning context for the button */
+}
+
+.leave-club-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  --color: #ff8a80; /* A reddish color for the icon */
+  font-size: 1.3rem; /* Make the icon a bit larger */
 }
 </style>
 </file>

@@ -185,6 +185,7 @@ const currentDistance = ref(0);
 const currentPace = ref(0);
 const elapsedTime = ref(0);
 let timerInterval = null;
+let countdownInterval = null;
 const routeCoordinates = ref([]);
 const isSummaryModalVisible = ref(false);
 const lastRunSummary = ref(null);
@@ -201,6 +202,9 @@ const isUserProfileModalVisible = ref(false);
 const selectedFriendProfile = ref(null);
 const isFetchingFriendRuns = ref(false);
 const logRunDate = ref(new Date().toISOString());
+const isInitializingGPS = ref(false);
+const isCountingDown = ref(false);
+const countdownValue = ref(3);
 // State for hold-to-stop button
 const isHoldingStop = ref(false);
 const holdProgress = ref(0);
@@ -716,6 +720,13 @@ function destroyMap() {
     userMarker = null;
     routePolyline = null;
   }
+  // Also clear any active timers or watches when modal closes
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  clearInterval(timerInterval);
+  clearInterval(countdownInterval);
+  isTracking.value = false;
+  isInitializingGPS.value = false;
+  isCountingDown.value = false;
 }
 
 async function initSummaryMap() {
@@ -956,59 +967,103 @@ function startWorkout() {
     navigator.vibrate(50);
   }
   if (!isTracking.value && navigator.geolocation) {
-    isTracking.value = true;
-    startTime = Date.now();
-    elapsedTime.value = 0;
-    currentDistance.value = 0;
-    lastPosition = null;
-    routeCoordinates.value = [];
+    isInitializingGPS.value = true;
 
-    timerInterval = setInterval(() => {
-      elapsedTime.value = Math.floor((Date.now() - startTime) / 1000);
-    }, 1000);
+    // 1. Get an initial, accurate position. This also handles permissions.
+    navigator.geolocation.getCurrentPosition(
+      (initialPosition) => {
+        isInitializingGPS.value = false;
+        isCountingDown.value = true;
+        countdownValue.value = 3;
 
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const latlng = [latitude, longitude];
-
-        routeCoordinates.value.push({ lat: latitude, lng: longitude });
-        if (lastPosition) {
-          const dist = calculateDistance(
-            lastPosition.latitude,
-            lastPosition.longitude,
-            latitude,
-            longitude
-          );
-          currentDistance.value += dist;
-        }
-        lastPosition = { latitude, longitude };
-        currentPace.value =
-          currentDistance.value > 0
-            ? elapsedTime.value / currentDistance.value
-            : 0;
-
-        // --- MAP UPDATE LOGIC ---
+        // Update map with the user's starting point before the countdown
         if (map) {
+          const { latitude, longitude } = initialPosition.coords;
+          const latlng = [latitude, longitude];
           if (!userMarker) {
             userMarker = L.marker(latlng).addTo(map);
             routePolyline = L.polyline([latlng], {
               color: "#fbbf24",
               weight: 6.5,
             }).addTo(map);
-            map.setView(latlng, 16);
           } else {
             userMarker.setLatLng(latlng);
-            routePolyline.addLatLng(latlng);
-            map.panTo(latlng);
+            routePolyline.setLatLngs([latlng]);
           }
+          map.setView(latlng, 16);
         }
+
+        // 2. Start the 3-second countdown
+        countdownInterval = setInterval(() => {
+          countdownValue.value -= 1;
+          if (countdownValue.value <= 0) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            isCountingDown.value = false;
+
+            // 3. Start the actual run tracking and timer
+            isTracking.value = true;
+            startTime = Date.now();
+            elapsedTime.value = 0;
+            currentDistance.value = 0;
+            // Use the accurate initial position as the starting point
+            lastPosition = {
+              latitude: initialPosition.coords.latitude,
+              longitude: initialPosition.coords.longitude,
+            };
+            routeCoordinates.value = [
+              {
+                lat: initialPosition.coords.latitude,
+                lng: initialPosition.coords.longitude,
+              },
+            ];
+
+            timerInterval = setInterval(() => {
+              elapsedTime.value = Math.floor((Date.now() - startTime) / 1000);
+            }, 1000);
+
+            watchId = navigator.geolocation.watchPosition(
+              (position) => {
+                const { latitude, longitude } = position.coords;
+                const latlng = [latitude, longitude];
+
+                routeCoordinates.value.push({ lat: latitude, lng: longitude });
+                if (lastPosition) {
+                  const dist = calculateDistance(
+                    lastPosition.latitude,
+                    lastPosition.longitude,
+                    latitude,
+                    longitude
+                  );
+                  currentDistance.value += dist;
+                }
+                lastPosition = { latitude, longitude };
+                currentPace.value =
+                  currentDistance.value > 0
+                    ? elapsedTime.value / currentDistance.value
+                    : 0;
+
+                // Update the map as the user moves
+                if (map && userMarker && routePolyline) {
+                  userMarker.setLatLng(latlng);
+                  routePolyline.addLatLng(latlng);
+                  map.panTo(latlng);
+                }
+              },
+              (error) => {
+                alert("Geolocation error: " + error.message);
+                stopWorkout();
+              },
+              { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+            );
+          }
+        }, 1000);
       },
       (error) => {
-        alert("Geolocation error: " + error.message);
-        stopWorkout();
+        isInitializingGPS.value = false;
+        alert(`Could not get GPS location: ${error.message}`);
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   } else if (!navigator.geolocation) {
     alert("Geolocation is not supported by this browser.");
@@ -1823,6 +1878,56 @@ async function joinRunClub() {
   }
 }
 
+async function leaveRunClub() {
+  if (!selectedRunClubDetails.value || !user.value) return;
+
+  const club = selectedRunClubDetails.value.clubInfo;
+
+  const alert = await alertController.create({
+    header: "Leave Club",
+    message: `Are you sure you want to leave ${club.clubName}? This action cannot be undone.`,
+    cssClass: "custom-alert",
+    buttons: [
+      { text: "Cancel", role: "cancel" },
+      {
+        text: "Leave",
+        role: "destructive",
+        handler: async () => {
+          try {
+            const clubId = club.id;
+            const userId = user.value.uid;
+
+            const batch = writeBatch(db);
+
+            // 1. Delete the user from the club's member list
+            const memberRef = doc(db, `runClubs/${clubId}/members`, userId);
+            batch.delete(memberRef);
+
+            // 2. Delete the club from the user's profile
+            const userClubRef = doc(db, `users/${userId}/runClubs`, clubId);
+            batch.delete(userClubRef);
+
+            await batch.commit();
+
+            isRunClubDetailModalVisible.value = false;
+            await presentToast(`You have left ${club.clubName}.`, "success");
+
+            await fetchUserRunClubs(userId);
+          } catch (error) {
+            console.error("Error leaving run club:", error);
+            await presentToast(
+              "Failed to leave the club. Please try again.",
+              "danger"
+            );
+          }
+        },
+      },
+    ],
+  });
+
+  await alert.present();
+}
+
 async function fetchUserRunClubs(userId) {
   try {
     const q = query(
@@ -2510,13 +2615,26 @@ onUnmounted(() => {
           </ion-card-header>
           <div id="map" ref="mapContainer"></div>
           <ion-card-content>
+            <!-- Show initialization or countdown UI -->
+            <div v-if="isInitializingGPS" class="countdown-container">
+              <p>Getting GPS signal...</p>
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+
+            <div v-else-if="isCountingDown" class="countdown-container">
+              <p class="countdown-number">{{ countdownValue }}</p>
+            </div>
+
+            <!-- Original Start Button (with new conditions) -->
             <ion-button
-              v-if="!isTracking"
+              v-if="!isTracking && !isInitializingGPS && !isCountingDown"
               expand="block"
               @click="startWorkout"
               class="yellow-button"
               >Start Tracking</ion-button
             >
+
+            <!-- Original Tracking UI -->
             <div v-if="isTracking">
               <div class="tracking-stats">
                 <div>
@@ -2913,6 +3031,13 @@ onUnmounted(() => {
           <ion-card class="styled-card club-detail-card">
             <ion-card-content>
               <div class="club-header">
+                <ion-button
+                  fill="clear"
+                  class="leave-club-button"
+                  @click="leaveRunClub"
+                >
+                  <ion-icon slot="icon-only" :icon="logOut"></ion-icon>
+                </ion-button>
                 <img
                   :src="
                     selectedRunClubDetails.clubInfo.clubPictureURL ||
@@ -3720,6 +3845,7 @@ ion-spinner {
 .forgot-password-link a:hover {
   color: #ffffff;
 }
+
 /* Shoe Detail Modal Header Styles */
 .shoe-detail-header {
   text-align: center;
@@ -3737,5 +3863,53 @@ ion-spinner {
   font-weight: 400;
   color: #ffffff;
   margin: 0;
+}
+
+/* Leave Club Button Styles */
+.club-detail-card ion-card-content {
+  position: relative; /* Establishes a positioning context for the button */
+}
+
+.leave-club-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  --color: #ff8a80; /* A reddish color for the icon */
+  font-size: 1.3rem; /* Make the icon a bit larger */
+}
+
+/* Countdown Styles */
+.countdown-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* This ensures it takes up the same vertical space as the button/stats */
+  min-height: 124px;
+  text-align: center;
+}
+
+.countdown-number {
+  /* Make the number much bigger */
+  font-size: 6rem;
+  /* Make the font bold */
+  font-weight: 700;
+  /* Make the color yellow */
+  color: #fbbf24;
+  /* Add a subtle pulse animation to draw attention */
+  animation: countdown-pulse 1s infinite;
+  line-height: 1; /* Helps with precise vertical centering */
+}
+
+@keyframes countdown-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>
