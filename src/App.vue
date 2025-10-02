@@ -187,6 +187,8 @@ const elapsedTime = ref(0);
 let timerInterval = null;
 let countdownInterval = null;
 const routeCoordinates = ref([]);
+const mileSplits = ref([]);
+let nextMileMarker = 1;
 const isSummaryModalVisible = ref(false);
 const lastRunSummary = ref(null);
 const photoURL = ref(null);
@@ -1018,6 +1020,9 @@ function startWorkout() {
               },
             ];
 
+            mileSplits.value = [];
+            nextMileMarker = 1;
+
             timerInterval = setInterval(() => {
               elapsedTime.value = Math.floor((Date.now() - startTime) / 1000);
             }, 1000);
@@ -1036,6 +1041,23 @@ function startWorkout() {
                     longitude
                   );
                   currentDistance.value += dist;
+
+                  // --- MILE SPLIT LOGIC ---
+                  if (currentDistance.value >= nextMileMarker) {
+                    const previousTotalTime =
+                      mileSplits.value.length > 0
+                        ? mileSplits.value[mileSplits.value.length - 1]
+                            .totalTime
+                        : 0;
+                    const splitTime = elapsedTime.value - previousTotalTime;
+
+                    mileSplits.value.push({
+                      mile: nextMileMarker,
+                      totalTime: elapsedTime.value, // Total time at this mile
+                      splitTime: splitTime, // Time for this specific mile
+                    });
+                    nextMileMarker++;
+                  }
                 }
                 lastPosition = { latitude, longitude };
                 currentPace.value =
@@ -2656,6 +2678,23 @@ onUnmounted(() => {
                   </p>
                 </div>
               </div>
+              <div class="mile-splits-container" v-if="mileSplits.length > 0">
+                <h3 class="splits-header">Mile Splits</h3>
+                <transition-group
+                  name="split-item"
+                  tag="ul"
+                  class="mile-splits-list"
+                >
+                  <li
+                    v-for="split in mileSplits"
+                    :key="split.mile"
+                    class="mile-split-item"
+                  >
+                    <span>Mile {{ split.mile }}</span>
+                    <span>{{ formatTime(split.splitTime) }}</span>
+                  </li>
+                </transition-group>
+              </div>
               <!-- Hold to Stop Button -->
               <div
                 class="hold-to-stop-button ion-margin-top"
@@ -3911,5 +3950,59 @@ ion-spinner {
   100% {
     transform: scale(1);
   }
+}
+
+/* Mile Splits Styles */
+.mile-splits-container {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.splits-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #d1d5db;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.mile-splits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px; /* Adjust as needed */
+  overflow-y: auto;
+}
+
+.mile-split-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.mile-split-item span:first-child {
+  color: #d1d5db;
+}
+
+/* Animation for split items */
+.split-item-enter-active,
+.split-item-leave-active {
+  transition: all 0.5s ease;
+}
+
+.split-item-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.split-item-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
 }
 </style>

@@ -1808,7 +1808,10 @@ const currentDistance = ref(0);
 const currentPace = ref(0);
 const elapsedTime = ref(0);
 let timerInterval = null;
+let countdownInterval = null;
 const routeCoordinates = ref([]);
+const mileSplits = ref([]);
+let nextMileMarker = 1;
 const isSummaryModalVisible = ref(false);
 const lastRunSummary = ref(null);
 const photoURL = ref(null);
@@ -1824,6 +1827,9 @@ const isUserProfileModalVisible = ref(false);
 const selectedFriendProfile = ref(null);
 const isFetchingFriendRuns = ref(false);
 const logRunDate = ref(new Date().toISOString());
+const isInitializingGPS = ref(false);
+const isCountingDown = ref(false);
+const countdownValue = ref(3);
 // State for hold-to-stop button
 const isHoldingStop = ref(false);
 const holdProgress = ref(0);
@@ -2339,6 +2345,13 @@ function destroyMap() {
     userMarker = null;
     routePolyline = null;
   }
+  // Also clear any active timers or watches when modal closes
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  clearInterval(timerInterval);
+  clearInterval(countdownInterval);
+  isTracking.value = false;
+  isInitializingGPS.value = false;
+  isCountingDown.value = false;
 }
 
 async function initSummaryMap() {
@@ -2579,59 +2592,123 @@ function startWorkout() {
     navigator.vibrate(50);
   }
   if (!isTracking.value && navigator.geolocation) {
-    isTracking.value = true;
-    startTime = Date.now();
-    elapsedTime.value = 0;
-    currentDistance.value = 0;
-    lastPosition = null;
-    routeCoordinates.value = [];
+    isInitializingGPS.value = true;
 
-    timerInterval = setInterval(() => {
-      elapsedTime.value = Math.floor((Date.now() - startTime) / 1000);
-    }, 1000);
+    // 1. Get an initial, accurate position. This also handles permissions.
+    navigator.geolocation.getCurrentPosition(
+      (initialPosition) => {
+        isInitializingGPS.value = false;
+        isCountingDown.value = true;
+        countdownValue.value = 3;
 
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const latlng = [latitude, longitude];
-
-        routeCoordinates.value.push({ lat: latitude, lng: longitude });
-        if (lastPosition) {
-          const dist = calculateDistance(
-            lastPosition.latitude,
-            lastPosition.longitude,
-            latitude,
-            longitude
-          );
-          currentDistance.value += dist;
-        }
-        lastPosition = { latitude, longitude };
-        currentPace.value =
-          currentDistance.value > 0
-            ? elapsedTime.value / currentDistance.value
-            : 0;
-
-        // --- MAP UPDATE LOGIC ---
+        // Update map with the user's starting point before the countdown
         if (map) {
+          const { latitude, longitude } = initialPosition.coords;
+          const latlng = [latitude, longitude];
           if (!userMarker) {
             userMarker = L.marker(latlng).addTo(map);
             routePolyline = L.polyline([latlng], {
               color: "#fbbf24",
               weight: 6.5,
             }).addTo(map);
-            map.setView(latlng, 16);
           } else {
             userMarker.setLatLng(latlng);
-            routePolyline.addLatLng(latlng);
-            map.panTo(latlng);
+            routePolyline.setLatLngs([latlng]);
           }
+          map.setView(latlng, 16);
         }
+
+        // 2. Start the 3-second countdown
+        countdownInterval = setInterval(() => {
+          countdownValue.value -= 1;
+          if (countdownValue.value <= 0) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+            isCountingDown.value = false;
+
+            // 3. Start the actual run tracking and timer
+            isTracking.value = true;
+            startTime = Date.now();
+            elapsedTime.value = 0;
+            currentDistance.value = 0;
+            // Use the accurate initial position as the starting point
+            lastPosition = {
+              latitude: initialPosition.coords.latitude,
+              longitude: initialPosition.coords.longitude,
+            };
+            routeCoordinates.value = [
+              {
+                lat: initialPosition.coords.latitude,
+                lng: initialPosition.coords.longitude,
+              },
+            ];
+
+            mileSplits.value = [];
+            nextMileMarker = 1;
+
+            timerInterval = setInterval(() => {
+              elapsedTime.value = Math.floor((Date.now() - startTime) / 1000);
+            }, 1000);
+
+            watchId = navigator.geolocation.watchPosition(
+              (position) => {
+                const { latitude, longitude } = position.coords;
+                const latlng = [latitude, longitude];
+
+                routeCoordinates.value.push({ lat: latitude, lng: longitude });
+                if (lastPosition) {
+                  const dist = calculateDistance(
+                    lastPosition.latitude,
+                    lastPosition.longitude,
+                    latitude,
+                    longitude
+                  );
+                  currentDistance.value += dist;
+
+                  // --- MILE SPLIT LOGIC ---
+                  if (currentDistance.value >= nextMileMarker) {
+                    const previousTotalTime =
+                      mileSplits.value.length > 0
+                        ? mileSplits.value[mileSplits.value.length - 1]
+                            .totalTime
+                        : 0;
+                    const splitTime = elapsedTime.value - previousTotalTime;
+
+                    mileSplits.value.push({
+                      mile: nextMileMarker,
+                      totalTime: elapsedTime.value, // Total time at this mile
+                      splitTime: splitTime, // Time for this specific mile
+                    });
+                    nextMileMarker++;
+                  }
+                }
+                lastPosition = { latitude, longitude };
+                currentPace.value =
+                  currentDistance.value > 0
+                    ? elapsedTime.value / currentDistance.value
+                    : 0;
+
+                // Update the map as the user moves
+                if (map && userMarker && routePolyline) {
+                  userMarker.setLatLng(latlng);
+                  routePolyline.addLatLng(latlng);
+                  map.panTo(latlng);
+                }
+              },
+              (error) => {
+                alert("Geolocation error: " + error.message);
+                stopWorkout();
+              },
+              { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+            );
+          }
+        }, 1000);
       },
       (error) => {
-        alert("Geolocation error: " + error.message);
-        stopWorkout();
+        isInitializingGPS.value = false;
+        alert(`Could not get GPS location: ${error.message}`);
       },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   } else if (!navigator.geolocation) {
     alert("Geolocation is not supported by this browser.");
@@ -4183,13 +4260,26 @@ onUnmounted(() => {
           </ion-card-header>
           <div id="map" ref="mapContainer"></div>
           <ion-card-content>
+            <!-- Show initialization or countdown UI -->
+            <div v-if="isInitializingGPS" class="countdown-container">
+              <p>Getting GPS signal...</p>
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+
+            <div v-else-if="isCountingDown" class="countdown-container">
+              <p class="countdown-number">{{ countdownValue }}</p>
+            </div>
+
+            <!-- Original Start Button (with new conditions) -->
             <ion-button
-              v-if="!isTracking"
+              v-if="!isTracking && !isInitializingGPS && !isCountingDown"
               expand="block"
               @click="startWorkout"
               class="yellow-button"
               >Start Tracking</ion-button
             >
+
+            <!-- Original Tracking UI -->
             <div v-if="isTracking">
               <div class="tracking-stats">
                 <div>
@@ -4210,6 +4300,23 @@ onUnmounted(() => {
                     {{ formatTime(elapsedTime) }}
                   </p>
                 </div>
+              </div>
+              <div class="mile-splits-container" v-if="mileSplits.length > 0">
+                <h3 class="splits-header">Mile Splits</h3>
+                <transition-group
+                  name="split-item"
+                  tag="ul"
+                  class="mile-splits-list"
+                >
+                  <li
+                    v-for="split in mileSplits"
+                    :key="split.mile"
+                    class="mile-split-item"
+                  >
+                    <span>Mile {{ split.mile }}</span>
+                    <span>{{ formatTime(split.splitTime) }}</span>
+                  </li>
+                </transition-group>
               </div>
               <!-- Hold to Stop Button -->
               <div
@@ -5400,6 +5507,7 @@ ion-spinner {
 .forgot-password-link a:hover {
   color: #ffffff;
 }
+
 /* Shoe Detail Modal Header Styles */
 .shoe-detail-header {
   text-align: center;
@@ -5419,6 +5527,7 @@ ion-spinner {
   margin: 0;
 }
 
+/* Leave Club Button Styles */
 .club-detail-card ion-card-content {
   position: relative; /* Establishes a positioning context for the button */
 }
@@ -5429,6 +5538,95 @@ ion-spinner {
   right: 8px;
   --color: #ff8a80; /* A reddish color for the icon */
   font-size: 1.3rem; /* Make the icon a bit larger */
+}
+
+/* Countdown Styles */
+.countdown-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* This ensures it takes up the same vertical space as the button/stats */
+  min-height: 124px;
+  text-align: center;
+}
+
+.countdown-number {
+  /* Make the number much bigger */
+  font-size: 6rem;
+  /* Make the font bold */
+  font-weight: 700;
+  /* Make the color yellow */
+  color: #fbbf24;
+  /* Add a subtle pulse animation to draw attention */
+  animation: countdown-pulse 1s infinite;
+  line-height: 1; /* Helps with precise vertical centering */
+}
+
+@keyframes countdown-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Mile Splits Styles */
+.mile-splits-container {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.splits-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #d1d5db;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.mile-splits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px; /* Adjust as needed */
+  overflow-y: auto;
+}
+
+.mile-split-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.mile-split-item span:first-child {
+  color: #d1d5db;
+}
+
+/* Animation for split items */
+.split-item-enter-active,
+.split-item-leave-active {
+  transition: all 0.5s ease;
+}
+
+.split-item-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.split-item-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
 }
 </style>
 </file>
