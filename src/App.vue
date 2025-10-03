@@ -2691,7 +2691,14 @@ onUnmounted(() => {
                     class="mile-split-item"
                   >
                     <span>Mile {{ split.mile }}</span>
-                    <span>{{ formatTime(split.splitTime) }}</span>
+                    <div class="split-details">
+                      <span class="split-pace"
+                        >{{ formatTime(split.splitTime) }} Pace</span
+                      >
+                      <span class="split-total-time"
+                        >Total: {{ formatTime(split.totalTime) }}</span
+                      >
+                    </div>
                   </li>
                 </transition-group>
               </div>
@@ -4004,5 +4011,22 @@ ion-spinner {
 .split-item-leave-to {
   opacity: 0;
   transform: translateX(30px);
+}
+
+.split-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.split-pace {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.split-total-time {
+  font-size: 0.8em;
+  color: #d1d5db;
+  margin-top: 2px;
 }
 </style>
