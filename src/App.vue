@@ -313,9 +313,11 @@ const lastRunXp = computed(() =>
 
 const getStartOfWeek = (date, offset = 0) => {
   const d = new Date(date);
-  d.setDate(d.getDate() - d.getDay() + offset * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  // Use local day and date, NOT UTC versions
+  const day = d.getDay(); // 0 for Sunday
+  const diff = d.getDate() - day + offset * 7;
+  // Set the date to the beginning of the week (Sunday) in the local timezone
+  return new Date(d.setDate(diff));
 };
 
 const currentWeekStart = computed(() =>
@@ -1974,97 +1976,64 @@ async function openRunClubDetailModal(club) {
   isClubDataLoading.value = true;
   lastWeekWinner.value = null;
   historicalWinners.value = [];
-  selectedRunClubDetails.value = null; // Set to null initially
+  selectedRunClubDetails.value = null;
 
   try {
-    // --- NEW: Fetch the full, authoritative club document ---
+    // --- Fetch the full club document ---
     const clubRef = doc(db, "runClubs", club.id);
     const clubDoc = await getDoc(clubRef);
-
-    if (!clubDoc.exists()) {
-      throw new Error("Club data could not be found.");
-    }
-    // This object now contains the 'createdAt' field
+    if (!clubDoc.exists()) throw new Error("Club data not found.");
     const fullClubData = { id: clubDoc.id, ...clubDoc.data() };
     selectedRunClubDetails.value = { clubInfo: fullClubData, members: [] };
-    // --- END OF NEW CODE ---
 
-    // --- Date calculations for CURRENT and PREVIOUS week ---
+    // --- Date calculations for the CURRENT week's leaderboard ---
     const now = new Date();
-    const startOfThisWeek = getStartOfWeek(now);
+    const startOfThisWeek = getStartOfWeek(now); // Your existing helper function
     const endOfThisWeek = new Date(startOfThisWeek);
-    endOfThisWeek.setDate(endOfThisWeek.getDate() + 7);
+    endOfThisWeek.setDate(startOfThisWeek.getDate() + 7);
 
-    const startOfLastWeek = new Date(startOfThisWeek);
-    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
-    const endOfLastWeek = startOfThisWeek;
+    // --- Fetch LAST WEEK'S WINNER (pre-calculated by the Cloud Function) ---
+    const lastWinnerQuery = query(
+      collection(db, `runClubs/${club.id}/weeklyWinners`),
+      orderBy("weekOf", "desc"),
+      limit(1)
+    );
+    const lastWinnerSnapshot = await getDocs(lastWinnerQuery);
+    if (!lastWinnerSnapshot.empty) {
+      lastWeekWinner.value = lastWinnerSnapshot.docs[0].data();
+    }
 
-    // Use the 'createdAt' field from the fullClubData we just fetched
-    const clubCreationDate = fullClubData.createdAt.toDate();
-
-    // --- Fetch all members of the club ---
-    const membersQuery = query(collection(db, `runClubs/${club.id}/members`));
-    const membersSnapshot = await getDocs(membersQuery);
-    const membersData = membersSnapshot.docs.map((doc) => ({
-      uid: doc.id,
-      ...doc.data(),
-    }));
-
-    // --- Fetch historical winners ---
-    const winnersQuery = query(
+    // --- Fetch HISTORICAL WINNERS (for the crown icons) ---
+    const allWinnersQuery = query(
       collection(db, `runClubs/${club.id}/weeklyWinners`)
     );
-    const winnersSnapshot = await getDocs(winnersQuery);
-    historicalWinners.value = winnersSnapshot.docs.map(
-      (doc) => doc.data().userId
+    const allWinnersSnapshot = await getDocs(allWinnersQuery);
+    // Create a Set of unique user IDs who have ever won
+    const winnerIds = new Set(
+      allWinnersSnapshot.docs.map((doc) => doc.data().userId)
     );
+    historicalWinners.value = Array.from(winnerIds);
 
-    // --- Process runs for all members ---
-    let lastWeekDistances = {};
-
-    const memberPromises = membersData.map(async (member) => {
-      const currentWeekRunsQuery = query(
+    // --- Fetch members and their CURRENT week distance ---
+    const membersQuery = query(collection(db, `runClubs/${club.id}/members`));
+    const membersSnapshot = await getDocs(membersQuery);
+    const memberPromises = membersSnapshot.docs.map(async (memberDoc) => {
+      const member = { uid: memberDoc.id, ...memberDoc.data() };
+      const runsQuery = query(
         collection(db, "runs"),
         where("userId", "==", member.uid),
         where("timestamp", ">=", startOfThisWeek),
         where("timestamp", "<", endOfThisWeek)
       );
-      const currentWeekRunsSnapshot = await getDocs(currentWeekRunsQuery);
-      const weeklyDistance = currentWeekRunsSnapshot.docs.reduce(
+      const runsSnapshot = await getDocs(runsQuery);
+      const weeklyDistance = runsSnapshot.docs.reduce(
         (total, doc) => total + doc.data().distance,
         0
       );
-
-      if (startOfLastWeek >= clubCreationDate) {
-        const lastWeekRunsQuery = query(
-          collection(db, "runs"),
-          where("userId", "==", member.uid),
-          where("timestamp", ">=", startOfLastWeek),
-          where("timestamp", "<", endOfLastWeek)
-        );
-        const lastWeekRunsSnapshot = await getDocs(lastWeekRunsQuery);
-        lastWeekDistances[member.uid] = lastWeekRunsSnapshot.docs.reduce(
-          (total, doc) => total + doc.data().distance,
-          0
-        );
-      }
       return { ...member, weeklyDistance };
     });
 
     const membersWithStats = await Promise.all(memberPromises);
-
-    let maxDistance = 0;
-    let winnerId = null;
-    for (const userId in lastWeekDistances) {
-      if (lastWeekDistances[userId] > maxDistance) {
-        maxDistance = lastWeekDistances[userId];
-        winnerId = userId;
-      }
-    }
-    if (winnerId && maxDistance > 0) {
-      lastWeekWinner.value = membersData.find((m) => m.uid === winnerId);
-    }
-
     membersWithStats.sort((a, b) => b.weeklyDistance - a.weeklyDistance);
     selectedRunClubDetails.value.members = membersWithStats;
   } catch (error) {

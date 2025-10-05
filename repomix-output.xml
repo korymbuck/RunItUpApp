@@ -40,6 +40,9 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+functions/
+  index.js
+  package.json
 public/
   icons/
     boot.svg
@@ -58,6 +61,7 @@ src/
   main.js
   style.css
 cors.json
+firebase.json
 index.html
 package.json
 README.md
@@ -66,6 +70,239 @@ vite.config.js
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="functions/index.js">
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall } = require("firebase-functions/v2/https");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
+const { log } = require("firebase-functions/logger");
+
+initializeApp();
+const db = getFirestore();
+
+// THIS FUNCTION IS CORRECT AND REMAINS THE SAME
+exports.calculateWeeklyWinner = onSchedule(
+  {
+    schedule: "every sunday 00:05",
+    timeZone: "America/Los_Angeles",
+  },
+  async (event) => {
+    log("Starting weekly winner calculation job for Pacific Time.");
+    const now = new Date(event.scheduleTime);
+    const endOfLastWeek = new Date(now);
+    endOfLastWeek.setUTCHours(0, 0, 0, 0);
+    const startOfLastWeek = new Date(endOfLastWeek);
+    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+    log(`Calculating for week: ${startOfLastWeek} to ${endOfLastWeek}`);
+
+    const clubsSnapshot = await db.collection("runClubs").get();
+    if (clubsSnapshot.empty) {
+      log("No run clubs found.");
+      return null;
+    }
+
+    for (const clubDoc of clubsSnapshot.docs) {
+      const clubId = clubDoc.id;
+      const clubData = clubDoc.data();
+      log(`Processing club: ${clubData.name} (${clubId})`);
+
+      const membersSnapshot = await db
+        .collection(`runClubs/${clubId}/members`)
+        .get();
+      if (membersSnapshot.empty) {
+        log(`Club ${clubData.name} has no members. Skipping.`);
+        continue;
+      }
+
+      const weeklyDistances = [];
+      for (const memberDoc of membersSnapshot.docs) {
+        const memberId = memberDoc.id;
+        const memberData = memberDoc.data();
+        const runsSnapshot = await db
+          .collection("runs")
+          .where("userId", "==", memberId)
+          .where("timestamp", ">=", startOfLastWeek)
+          .where("timestamp", "<", endOfLastWeek)
+          .get();
+        const totalDistance = runsSnapshot.docs.reduce(
+          (sum, doc) => sum + doc.data().distance,
+          0
+        );
+        if (totalDistance > 0) {
+          weeklyDistances.push({
+            userId: memberId,
+            displayName: memberData.displayName,
+            photoURL: memberData.photoURL || null,
+            distance: totalDistance,
+          });
+        }
+      }
+
+      if (weeklyDistances.length > 0) {
+        weeklyDistances.sort((a, b) => b.distance - a.distance);
+        const winner = weeklyDistances[0];
+        const logMessage =
+          `Winner for ${clubData.name} is ` +
+          `${winner.displayName} with ${winner.distance} miles.`;
+        log(logMessage);
+
+        const weekIdentifier = startOfLastWeek.toISOString().split("T")[0];
+        await db
+          .collection(`runClubs/${clubId}/weeklyWinners`)
+          .doc(weekIdentifier)
+          .set({
+            ...winner,
+            weekOf: startOfLastWeek,
+          });
+      } else {
+        const logMessage =
+          "No runs recorded for any member in " + `${clubData.name} last week.`;
+        log(logMessage);
+      }
+    }
+    log("Weekly winner calculation job finished.");
+    return null;
+  }
+);
+
+// THIS IS THE NEW, ROBUST BACKFILL FUNCTION
+exports.backfillLastWinner = onCall(async (request) => {
+  log("Starting FINAL MANUAL Pacific Time backfill job.");
+
+  // This new logic is unambiguous and robust
+  const now = new Date();
+  // Get an unambiguous string for the current date in LA
+  const [todayStr] = now
+    .toLocaleString("en-CA", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+    .split(", "); // "YYYY-MM-DD" format
+
+  const todayInLA = new Date(`${todayStr}T12:00:00Z`); // Use midday to avoid DST crossover issues
+  const dayOfWeek = todayInLA.getUTCDay(); // 0 = Sunday
+
+  // endOfLastWeek is the most recent Sunday at midnight Pacific Time
+  const endOfLastWeek = new Date(todayInLA);
+  endOfLastWeek.setUTCDate(todayInLA.getUTCDate() - dayOfWeek);
+  endOfLastWeek.setUTCHours(7, 0, 0, 0); // 7 AM UTC = Midnight PDT
+
+  // startOfLastWeek is exactly 7 days before that
+  const startOfLastWeek = new Date(endOfLastWeek);
+  startOfLastWeek.setDate(endOfLastWeek.getDate() - 7);
+
+  const logDateRange =
+    `Backfilling for week: ` +
+    `${startOfLastWeek.toISOString()} to ${endOfLastWeek.toISOString()}`;
+  log(logDateRange); // Verify these dates in the function logs if needed
+
+  const clubsSnapshot = await db.collection("runClubs").get();
+  if (clubsSnapshot.empty) {
+    return { success: true, message: "No clubs to process." };
+  }
+
+  // The rest of this logic is the same and correct
+  for (const clubDoc of clubsSnapshot.docs) {
+    const clubId = clubDoc.id;
+    const clubData = clubDoc.data();
+    log(`Backfilling for club: ${clubData.name}`);
+
+    const membersSnapshot = await db
+      .collection(`runClubs/${clubId}/members`)
+      .get();
+    if (membersSnapshot.empty) continue;
+
+    const weeklyDistances = [];
+    for (const memberDoc of membersSnapshot.docs) {
+      const memberId = memberDoc.id;
+      const memberData = memberDoc.data();
+      const runsSnapshot = await db
+        .collection("runs")
+        .where("userId", "==", memberId)
+        .where("timestamp", ">=", startOfLastWeek)
+        .where("timestamp", "<", endOfLastWeek)
+        .get();
+      const totalDistance = runsSnapshot.docs.reduce(
+        (sum, doc) => sum + doc.data().distance,
+        0
+      );
+      if (totalDistance > 0) {
+        weeklyDistances.push({
+          userId: memberId,
+          displayName: memberData.displayName,
+          photoURL: memberData.photoURL || null,
+          distance: totalDistance,
+        });
+      }
+    }
+
+    if (weeklyDistances.length > 0) {
+      weeklyDistances.sort((a, b) => b.distance - a.distance);
+      const winner = weeklyDistances[0];
+      log(`Winner for ${clubData.name} is ${winner.displayName}`);
+      const weekIdentifier = startOfLastWeek.toISOString().split("T")[0];
+      await db
+        .collection(`runClubs/${clubId}/weeklyWinners`)
+        .doc(weekIdentifier)
+        .set({
+          ...winner,
+          weekOf: startOfLastWeek,
+        });
+    }
+  }
+  log("Manual backfill job finished.");
+  return { success: true, message: "Backfill complete." };
+});
+</file>
+
+<file path="functions/package.json">
+{
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0",
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}
+</file>
+
+<file path="firebase.json">
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ]
+}
+</file>
 
 <file path="public/manifest.json">
 {
@@ -1874,6 +2111,8 @@ const clubPictureFile = ref(null);
 const clubPictureInput = ref(null);
 const selectedRunClubDetails = ref(null); // Will hold { clubInfo, membersWithStats }
 const isClubDataLoading = ref(false);
+const lastWeekWinner = ref(null);
+const historicalWinners = ref([]);
 
 // --- COMPUTED ---
 const setMapRef = (key, el) => {
@@ -1934,9 +2173,11 @@ const lastRunXp = computed(() =>
 
 const getStartOfWeek = (date, offset = 0) => {
   const d = new Date(date);
-  d.setDate(d.getDate() - d.getDay() + offset * 7);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  // Use local day and date, NOT UTC versions
+  const day = d.getDay(); // 0 for Sunday
+  const diff = d.getDate() - day + offset * 7;
+  // Set the date to the beginning of the week (Sunday) in the local timezone
+  return new Date(d.setDate(diff));
 };
 
 const currentWeekStart = computed(() =>
@@ -3593,31 +3834,56 @@ async function fetchUserRunClubs(userId) {
 async function openRunClubDetailModal(club) {
   isRunClubDetailModalVisible.value = true;
   isClubDataLoading.value = true;
-  selectedRunClubDetails.value = { clubInfo: club, members: [] };
+  lastWeekWinner.value = null;
+  historicalWinners.value = [];
+  selectedRunClubDetails.value = null;
 
   try {
-    // Define the weekly boundaries
-    const now = new Date();
-    const startOfWeek = getStartOfWeek(now); // Sunday 12:00 AM
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 7); // Next Sunday 12:00 AM
+    // --- Fetch the full club document ---
+    const clubRef = doc(db, "runClubs", club.id);
+    const clubDoc = await getDoc(clubRef);
+    if (!clubDoc.exists()) throw new Error("Club data not found.");
+    const fullClubData = { id: clubDoc.id, ...clubDoc.data() };
+    selectedRunClubDetails.value = { clubInfo: fullClubData, members: [] };
 
-    // 1. Fetch all members of the club
+    // --- Date calculations for the CURRENT week's leaderboard ---
+    const now = new Date();
+    const startOfThisWeek = getStartOfWeek(now); // Your existing helper function
+    const endOfThisWeek = new Date(startOfThisWeek);
+    endOfThisWeek.setDate(startOfThisWeek.getDate() + 7);
+
+    // --- Fetch LAST WEEK'S WINNER (pre-calculated by the Cloud Function) ---
+    const lastWinnerQuery = query(
+      collection(db, `runClubs/${club.id}/weeklyWinners`),
+      orderBy("weekOf", "desc"),
+      limit(1)
+    );
+    const lastWinnerSnapshot = await getDocs(lastWinnerQuery);
+    if (!lastWinnerSnapshot.empty) {
+      lastWeekWinner.value = lastWinnerSnapshot.docs[0].data();
+    }
+
+    // --- Fetch HISTORICAL WINNERS (for the crown icons) ---
+    const allWinnersQuery = query(
+      collection(db, `runClubs/${club.id}/weeklyWinners`)
+    );
+    const allWinnersSnapshot = await getDocs(allWinnersQuery);
+    // Create a Set of unique user IDs who have ever won
+    const winnerIds = new Set(
+      allWinnersSnapshot.docs.map((doc) => doc.data().userId)
+    );
+    historicalWinners.value = Array.from(winnerIds);
+
+    // --- Fetch members and their CURRENT week distance ---
     const membersQuery = query(collection(db, `runClubs/${club.id}/members`));
     const membersSnapshot = await getDocs(membersQuery);
-    const membersData = membersSnapshot.docs.map((doc) => ({
-      uid: doc.id,
-      ...doc.data(),
-      weeklyDistance: 0,
-    }));
-
-    // 2. For each member, fetch their runs for the current week
-    const memberPromises = membersData.map(async (member) => {
+    const memberPromises = membersSnapshot.docs.map(async (memberDoc) => {
+      const member = { uid: memberDoc.id, ...memberDoc.data() };
       const runsQuery = query(
         collection(db, "runs"),
         where("userId", "==", member.uid),
-        where("timestamp", ">=", startOfWeek),
-        where("timestamp", "<", endOfWeek)
+        where("timestamp", ">=", startOfThisWeek),
+        where("timestamp", "<", endOfThisWeek)
       );
       const runsSnapshot = await getDocs(runsQuery);
       const weeklyDistance = runsSnapshot.docs.reduce(
@@ -3627,19 +3893,15 @@ async function openRunClubDetailModal(club) {
       return { ...member, weeklyDistance };
     });
 
-    // 3. Wait for all run data to be fetched and calculated
     const membersWithStats = await Promise.all(memberPromises);
-
-    // 4. Sort by distance for the leaderboard
     membersWithStats.sort((a, b) => b.weeklyDistance - a.weeklyDistance);
-
-    selectedRunClubDetails.value = {
-      clubInfo: club,
-      members: membersWithStats,
-    };
+    selectedRunClubDetails.value.members = membersWithStats;
   } catch (error) {
     console.error("Error loading club details:", error);
-    await presentToast("Could not load club leaderboard.", "danger");
+    await presentToast(
+      error.message || "Could not load club leaderboard.",
+      "danger"
+    );
     isRunClubDetailModalVisible.value = false;
   } finally {
     isClubDataLoading.value = false;
@@ -4685,7 +4947,7 @@ onUnmounted(() => {
         <ion-toolbar>
           <ion-title>{{
             selectedRunClubDetails && selectedRunClubDetails.clubInfo
-              ? selectedRunClubDetails.clubInfo.clubName
+              ? selectedRunClubDetails.clubInfo.name // <-- FIX 1
               : "Club Details"
           }}</ion-title>
           <ion-buttons slot="end">
@@ -4716,7 +4978,8 @@ onUnmounted(() => {
                 />
                 <div class="club-info">
                   <h2 class="club-display-name">
-                    {{ selectedRunClubDetails.clubInfo.clubName }}
+                    {{ selectedRunClubDetails.clubInfo.name }}
+                    <!-- <-- FIX 2 -->
                   </h2>
                   <ion-button fill="clear" size="small" class="share-button">
                     <ion-icon :icon="shareSocial" slot="start"></ion-icon>
@@ -4754,6 +5017,29 @@ onUnmounted(() => {
             </ion-card-content>
           </ion-card>
 
+          <!-- Last Week's Top Runner Card -->
+          <ion-card class="styled-card" v-if="lastWeekWinner">
+            <ion-card-header>
+              <ion-card-title class="last-winner-title">
+                <ion-icon :icon="trophy" color="warning"></ion-icon>
+                Last Week's Top Runner
+              </ion-card-title>
+            </ion-card-header>
+            <ion-card-content class="last-winner-content">
+              <div class="winner-info-flex">
+                <ion-avatar class="last-winner-avatar">
+                  <img
+                    :src="lastWeekWinner.photoURL || '/default-avatar.png'"
+                  />
+                </ion-avatar>
+                <h2 class="last-winner-name">
+                  {{ lastWeekWinner.displayName }}
+                </h2>
+              </div>
+            </ion-card-content>
+          </ion-card>
+
+          <!-- Weekly Leaderboard Card -->
           <ion-card class="styled-card">
             <ion-card-header>
               <ion-card-title>
@@ -4777,7 +5063,15 @@ onUnmounted(() => {
                     <img :src="member.photoURL || '/default-avatar.png'" />
                   </ion-avatar>
                   <ion-label>
-                    <h2>{{ member.displayName }}</h2>
+                    <h2 class="leaderboard-name">
+                      {{ member.displayName }}
+                      <ion-icon
+                        v-if="historicalWinners.includes(member.uid)"
+                        :icon="trophy"
+                        color="warning"
+                        class="winner-crown"
+                      ></ion-icon>
+                    </h2>
                   </ion-label>
                   <ion-note slot="end" class="leaderboard-distance">
                     {{ member.weeklyDistance.toFixed(2) }} mi
@@ -5651,6 +5945,55 @@ ion-spinner {
   font-size: 0.8em;
   color: #d1d5db;
   margin-top: 2px;
+}
+
+/* Leaderboard Winner Styles */
+.last-winner-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  color: #d1d5db !important;
+  padding-bottom: 0.5rem;
+}
+
+/* This targets the card content area */
+.last-winner-content {
+  padding-top: 0 !important;
+  padding-bottom: 16px !important;
+}
+
+/* This is the new flex container for the avatar and name */
+.winner-info-flex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.last-winner-avatar {
+  width: 45px;
+  height: 45px;
+  border: 2px solid #fbbf24;
+}
+
+.last-winner-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+
+.leaderboard-name {
+  display: flex;
+  align-items: center;
+}
+
+.winner-crown {
+  margin-left: 8px;
+  font-size: 1.1em;
 }
 </style>
 </file>
