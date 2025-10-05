@@ -3118,7 +3118,7 @@ onUnmounted(() => {
         <ion-toolbar>
           <ion-title>{{
             selectedRunClubDetails && selectedRunClubDetails.clubInfo
-              ? selectedRunClubDetails.clubInfo.clubName
+              ? selectedRunClubDetails.clubInfo.name // <-- FIX 1
               : "Club Details"
           }}</ion-title>
           <ion-buttons slot="end">
@@ -3149,7 +3149,8 @@ onUnmounted(() => {
                 />
                 <div class="club-info">
                   <h2 class="club-display-name">
-                    {{ selectedRunClubDetails.clubInfo.clubName }}
+                    {{ selectedRunClubDetails.clubInfo.name }}
+                    <!-- <-- FIX 2 -->
                   </h2>
                   <ion-button fill="clear" size="small" class="share-button">
                     <ion-icon :icon="shareSocial" slot="start"></ion-icon>
