@@ -1,11 +1,25 @@
+// Import the modern, modular SDKs for Firebase
+importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
 importScripts(
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"
-);
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js"
 );
 
-messaging.onBackgroundMessage((payload) => {
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDk-n02q6hW_41tCnLw4oaYYjEh3codxcw",
+  authDomain: "runit-91e6f.firebaseapp.com",
+  projectId: "runit-91e6f",
+  storageBucket: "gs://runit-91e6f.firebasestorage.app",
+  messagingSenderId: "1098137720623",
+  appId: "1:1098137720623:web:48a6cb82eb37a08fd6b3da",
+};
+
+// Initialize Firebase using the modular functions
+const app = firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging.getMessaging(app);
+
+// Set the background message handler for incoming notifications
+firebase.messaging.onBackgroundMessage(messaging, (payload) => {
   console.log("[sw.js] Received background message ", payload);
 
   const notificationTitle = payload.notification.title;
@@ -18,15 +32,19 @@ messaging.onBackgroundMessage((payload) => {
     },
   };
 
+  // Display the notification
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+// Handle notification click events
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const urlToOpen = event.notification.data.url || "/";
 
   event.waitUntil(clients.openWindow(urlToOpen));
 });
+
+// --- Your Existing PWA Caching Logic (Remains Unchanged) ---
 
 const CACHE_NAME = "run-it-up-app-cache-v1";
 // List all files your app needs to function offline.
