@@ -46,11 +46,14 @@ functions/
 public/
   icons/
     boot.svg
+    icon-192x192.png
+  default-avatar.png
   manifest.json
   sw.js
   vite.svg
 src/
   assets/
+    google-icon.svg
     vue.svg
   components/
     HomePage.vue
@@ -65,6 +68,7 @@ firebase.json
 index.html
 package.json
 README.md
+repomix-config.json
 vite.config.js
 </directory_structure>
 
@@ -85,16 +89,37 @@ const db = getFirestore();
 exports.calculateWeeklyWinner = onSchedule(
   {
     schedule: "every sunday 00:05",
-    timeZone: "America/Los_Angeles",
+    // CHANGED: Timezone updated to Central Time
+    timeZone: "America/Chicago",
   },
   async (event) => {
-    log("Starting weekly winner calculation job for Pacific Time.");
-    const now = new Date(event.scheduleTime);
-    const endOfLastWeek = new Date(now);
-    endOfLastWeek.setUTCHours(0, 0, 0, 0);
+    log("Starting weekly winner calculation job for Central Time.");
+
+    const scheduledTimeInCT = new Date(event.scheduleTime);
+    const [todayStr] = scheduledTimeInCT
+      .toLocaleString("en-CA", {
+        timeZone: "America/Chicago",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+      .split(", ");
+
+    const todayInCT = new Date(`${todayStr}T12:00:00Z`);
+    const dayOfWeek = todayInCT.getUTCDay();
+
+    const endOfLastWeek = new Date(todayInCT);
+    endOfLastWeek.setUTCDate(todayInCT.getUTCDate() - dayOfWeek);
+    // CHANGED: UTC offset for Central Time (CDT is UTC-5)
+    endOfLastWeek.setUTCHours(5, 0, 0, 0); // 5 AM UTC = Midnight CDT
+
     const startOfLastWeek = new Date(endOfLastWeek);
-    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
-    log(`Calculating for week: ${startOfLastWeek} to ${endOfLastWeek}`);
+    startOfLastWeek.setDate(endOfLastWeek.getDate() - 7);
+
+    const logDateRange =
+      `Calculating for week: ` +
+      `${startOfLastWeek.toISOString()} to ${endOfLastWeek.toISOString()}`;
+    log(logDateRange);
 
     const clubsSnapshot = await db.collection("runClubs").get();
     if (clubsSnapshot.empty) {
@@ -168,43 +193,40 @@ exports.calculateWeeklyWinner = onSchedule(
 
 // THIS IS THE NEW, ROBUST BACKFILL FUNCTION
 exports.backfillLastWinner = onCall(async (request) => {
-  log("Starting FINAL MANUAL Pacific Time backfill job.");
+  log("Starting FINAL MANUAL Central Time backfill job.");
 
-  // This new logic is unambiguous and robust
   const now = new Date();
-  // Get an unambiguous string for the current date in LA
   const [todayStr] = now
     .toLocaleString("en-CA", {
-      timeZone: "America/Los_Angeles",
+      // CHANGED: Timezone updated to Central Time
+      timeZone: "America/Chicago",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     })
-    .split(", "); // "YYYY-MM-DD" format
+    .split(", ");
 
-  const todayInLA = new Date(`${todayStr}T12:00:00Z`); // Use midday to avoid DST crossover issues
-  const dayOfWeek = todayInLA.getUTCDay(); // 0 = Sunday
+  const todayInCT = new Date(`${todayStr}T12:00:00Z`);
+  const dayOfWeek = todayInCT.getUTCDay();
 
-  // endOfLastWeek is the most recent Sunday at midnight Pacific Time
-  const endOfLastWeek = new Date(todayInLA);
-  endOfLastWeek.setUTCDate(todayInLA.getUTCDate() - dayOfWeek);
-  endOfLastWeek.setUTCHours(7, 0, 0, 0); // 7 AM UTC = Midnight PDT
+  const endOfLastWeek = new Date(todayInCT);
+  endOfLastWeek.setUTCDate(todayInCT.getUTCDate() - dayOfWeek);
+  // CHANGED: UTC offset for Central Time (CDT is UTC-5)
+  endOfLastWeek.setUTCHours(5, 0, 0, 0); // 5 AM UTC = Midnight CDT
 
-  // startOfLastWeek is exactly 7 days before that
   const startOfLastWeek = new Date(endOfLastWeek);
   startOfLastWeek.setDate(endOfLastWeek.getDate() - 7);
 
   const logDateRange =
     `Backfilling for week: ` +
     `${startOfLastWeek.toISOString()} to ${endOfLastWeek.toISOString()}`;
-  log(logDateRange); // Verify these dates in the function logs if needed
+  log(logDateRange);
 
   const clubsSnapshot = await db.collection("runClubs").get();
   if (clubsSnapshot.empty) {
     return { success: true, message: "No clubs to process." };
   }
 
-  // The rest of this logic is the same and correct
   for (const clubDoc of clubsSnapshot.docs) {
     const clubId = clubDoc.id;
     const clubData = clubDoc.data();
@@ -284,23 +306,6 @@ exports.backfillLastWinner = onCall(async (request) => {
     "firebase-functions-test": "^3.1.0"
   },
   "private": true
-}
-</file>
-
-<file path="firebase.json">
-{
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ]
-    }
-  ]
 }
 </file>
 
@@ -605,6 +610,23 @@ defineEmits(["openRunActionSheet", "goToPreviousWeek", "goToNextWeek"]);
     "maxAgeSeconds": 3600
   }
 ]
+</file>
+
+<file path="firebase.json">
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ]
+}
 </file>
 
 <file path="index.html">

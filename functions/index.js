@@ -2,7 +2,9 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
 const { log } = require("firebase-functions/logger");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 
 initializeApp();
 const db = getFirestore();
@@ -200,3 +202,60 @@ exports.backfillLastWinner = onCall(async (request) => {
   log("Manual backfill job finished.");
   return { success: true, message: "Backfill complete." };
 });
+
+exports.sendKudosNotification = onDocumentCreated(
+  "/runs/{runId}/kudos/{kudoId}",
+  async (event) => {
+    // The v2 event object contains all the info we need.
+    const kudoData = event.data.data(); // Contains { giverId, giverName }
+    const runId = event.params.runId;
+
+    // 1. Get the run document to find out who the owner is
+    const runDoc = await db.collection("runs").doc(runId).get();
+    if (!runDoc.exists) {
+      return log("Run document not found.");
+    }
+    const runData = runDoc.data();
+    const runOwnerId = runData.userId;
+
+    // Don't send a notification if a user kudos their own run
+    if (runOwnerId === kudoData.giverId) {
+      return log("User gave kudos to their own run. No notification sent.");
+    }
+
+    // 2. Get the FCM tokens of the run owner
+    const tokensSnapshot = await db
+      .collection(`users/${runOwnerId}/fcmTokens`)
+      .get();
+    if (tokensSnapshot.empty) {
+      return log("No FCM tokens found for user:", runOwnerId);
+    }
+    const tokens = tokensSnapshot.docs.map((doc) => doc.id);
+
+    // 3. Construct the notification payload
+    const payload = {
+      notification: {
+        title: "You got kudos! 👟",
+        body: `${kudoData.giverName} liked your ${runData.distance.toFixed(
+          2
+        )} mile run.`,
+        icon: "/icons/icon-192x192.png",
+      },
+      data: {
+        // This URL will be opened when the notification is clicked
+        // You can make this a deep link to the specific run later
+        url: "/",
+      },
+    };
+
+    // 4. Send the notification to all of the user's devices
+    try {
+      const response = await getMessaging().sendToDevice(tokens, payload);
+      log("Successfully sent message:", response);
+      // Optional: Clean up tokens that are no longer valid
+      // You can add logic here to check the response for failed tokens and delete them
+    } catch (error) {
+      log("Error sending message:", error);
+    }
+  }
+);

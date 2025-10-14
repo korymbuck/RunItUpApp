@@ -1,3 +1,33 @@
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"
+);
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"
+);
+
+messaging.onBackgroundMessage((payload) => {
+  console.log("[sw.js] Received background message ", payload);
+
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: "/icons/icon-192x192.png", // A default icon
+    badge: "/icons/boot.svg", // Icon for the notification bar on Android
+    data: {
+      url: payload.data.url || "/", // URL to open when notification is clicked
+    },
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data.url || "/";
+
+  event.waitUntil(clients.openWindow(urlToOpen));
+});
+
 const CACHE_NAME = "run-it-up-app-cache-v1";
 // List all files your app needs to function offline.
 const urlsToCache = [

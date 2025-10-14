@@ -61,6 +61,7 @@ import {
   camera,
   trophy,
   shareSocial,
+  notificationsOutline,
 } from "ionicons/icons";
 import { auth, db } from "./firebase-config.js";
 import {
@@ -99,6 +100,8 @@ import {
   getDownloadURL,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { storage } from "./firebase-config.js";
+import { messaging } from "./firebase-config.js";
+import { getToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // Import the new components
 import HomePage from "./components/HomePage.vue";
@@ -123,6 +126,60 @@ const validators = {
     return div.innerHTML;
   },
 };
+
+// --- FCM Notification Permission and Token Handling ---
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    return presentToast(
+      "This browser does not support notifications.",
+      "danger"
+    );
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      console.log("Notification permission granted.");
+
+      // Get the token
+      const currentToken = await getToken(messaging, {
+        vapidKey:
+          "BMEb6xxFrjH9zVmYFXtt92J58z6pZBqj7AE06NFR9KqUatGZ7l1swD4VVK-h8kax_KP8fZcTpGZYBcxCtGGtHIU", // <--- IMPORTANT!
+      });
+
+      if (currentToken) {
+        console.log("FCM Token:", currentToken);
+        await saveTokenToFirestore(currentToken);
+        presentToast("You're all set for notifications!", "success");
+      } else {
+        console.log(
+          "No registration token available. Request permission to generate one."
+        );
+      }
+    } else {
+      console.log("Unable to get permission to notify.");
+      presentToast("Notification permissions were not granted.", "warning");
+    }
+  } catch (error) {
+    console.error("An error occurred while requesting permission:", error);
+  }
+}
+
+async function saveTokenToFirestore(token) {
+  if (!user.value) return;
+
+  try {
+    // We use the token itself as the document ID to prevent duplicates
+    const tokenDocRef = doc(db, `users/${user.value.uid}/fcmTokens`, token);
+    await setDoc(tokenDocRef, {
+      createdAt: new Date(),
+      userAgent: navigator.userAgent, // Optional: for debugging
+    });
+    console.log("Token saved to Firestore for user:", user.value.uid);
+  } catch (error) {
+    console.error("Error saving token to Firestore:", error);
+  }
+}
 
 // --- Helper to display toasts ---
 async function presentToast(message, color = "warning") {
@@ -545,6 +602,15 @@ async function openSettingsMenu() {
           isEditProfileModalVisible.value = true;
         },
       },
+
+      {
+        text: "Enable Notifications",
+        icon: notificationsOutline,
+        handler: () => {
+          requestNotificationPermission();
+        },
+      },
+
       {
         text: "Sign Out",
         role: "destructive",
