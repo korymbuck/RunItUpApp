@@ -1,10 +1,12 @@
-// Import the modern, modular SDKs for Firebase
-importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+// Import the Firebase "compat" scripts for use with importScripts
 importScripts(
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js"
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"
+);
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"
 );
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration (remains the same)
 const firebaseConfig = {
   apiKey: "AIzaSyDk-n02q6hW_41tCnLw4oaYYjEh3codxcw",
   authDomain: "runit-91e6f.firebaseapp.com",
@@ -14,29 +16,32 @@ const firebaseConfig = {
   appId: "1:1098137720623:web:48a6cb82eb37a08fd6b3da",
 };
 
-// Initialize Firebase using the modular functions
-const app = firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging.getMessaging(app);
+// Initialize Firebase using the v8-compatible syntax
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
-// Set the background message handler for incoming notifications
-firebase.messaging.onBackgroundMessage(messaging, (payload) => {
+// Set the background message handler
+messaging.onBackgroundMessage((payload) => {
   console.log("[sw.js] Received background message ", payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: "/icons/icon-192x192.png", // A default icon
-    badge: "/icons/boot.svg", // Icon for the notification bar on Android
+    icon: "/icons/icon-192x192.png",
+    badge: "/icons/boot.svg",
     data: {
-      url: payload.data.url || "/", // URL to open when notification is clicked
+      url: payload.data.url || "/",
     },
   };
 
-  // Display the notification
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // self.registration refers to the service worker's own registration
+  return self.registration.showNotification(
+    notificationTitle,
+    notificationOptions
+  );
 });
 
-// Handle notification click events
+// Handle notification click events (your existing code is good)
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const urlToOpen = event.notification.data.url || "/";
@@ -44,10 +49,9 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(clients.openWindow(urlToOpen));
 });
 
-// --- Your Existing PWA Caching Logic (Remains Unchanged) ---
+// --- Your PWA Caching Logic (No changes needed here) ---
 
 const CACHE_NAME = "run-it-up-app-cache-v1";
-// List all files your app needs to function offline.
 const urlsToCache = [
   "/",
   "/index.html",
@@ -55,8 +59,8 @@ const urlsToCache = [
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
   "/icons/icon-512x512.maskable.png",
-  "/assets/index-xxxxxxxx.js", // Vite will replace these hashes
-  "/assets/index-xxxxxxxx.css", // Vite will replace these hashes
+  "/assets/index-xxxxxxxx.js",
+  "/assets/index-xxxxxxxx.css",
   "/icons/boot.svg",
 ];
 
@@ -65,8 +69,6 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log("[Service Worker] Caching app shell");
-      // Use a non-blocking cache addAll. If one asset fails, the others still cache.
-      // This is more robust, especially for the hashed assets.
       return cache.addAll(urlsToCache).catch((err) => {
         console.warn("[Service Worker] Caching failed for some assets:", err);
       });
@@ -91,15 +93,15 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// --- MODIFIED FETCH LISTENER ---
+// MODIFIED FETCH LISTENER (Bonus Tip)
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // **FIX: Bypass cache for all Firestore and Google API requests.**
-  // This ensures that all communication with your database is live.
+  // **FIX: Bypass cache for Firebase and Google APIs to ensure live data.**
   if (
     requestUrl.hostname === "firestore.googleapis.com" ||
-    requestUrl.hostname.endsWith("firebaseapp.com")
+    requestUrl.hostname.endsWith("firebaseapp.com") ||
+    requestUrl.hostname === "www.gstatic.com" // Added this line
   ) {
     event.respondWith(fetch(event.request));
     return;
@@ -108,11 +110,9 @@ self.addEventListener("fetch", (event) => {
   // For all other requests, use the cache-first strategy.
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // Cache hit - return response
       if (response) {
         return response;
       }
-      // No cache hit - fetch from network
       return fetch(event.request);
     })
   );
