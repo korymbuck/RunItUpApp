@@ -1,5 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall } = require("firebase-functions/v2/https"); // <--- THIS LINE IS NOW FIXED
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -13,7 +13,6 @@ const db = getFirestore();
 exports.calculateWeeklyWinner = onSchedule(
   {
     schedule: "every sunday 00:05",
-    // CHANGED: Timezone updated to Central Time
     timeZone: "America/Chicago",
   },
   async (event) => {
@@ -34,7 +33,6 @@ exports.calculateWeeklyWinner = onSchedule(
 
     const endOfLastWeek = new Date(todayInCT);
     endOfLastWeek.setUTCDate(todayInCT.getUTCDate() - dayOfWeek);
-    // CHANGED: UTC offset for Central Time (CDT is UTC-5)
     endOfLastWeek.setUTCHours(5, 0, 0, 0); // 5 AM UTC = Midnight CDT
 
     const startOfLastWeek = new Date(endOfLastWeek);
@@ -122,7 +120,6 @@ exports.backfillLastWinner = onCall(async (request) => {
   const now = new Date();
   const [todayStr] = now
     .toLocaleString("en-CA", {
-      // CHANGED: Timezone updated to Central Time
       timeZone: "America/Chicago",
       year: "numeric",
       month: "2-digit",
@@ -135,7 +132,6 @@ exports.backfillLastWinner = onCall(async (request) => {
 
   const endOfLastWeek = new Date(todayInCT);
   endOfLastWeek.setUTCDate(todayInCT.getUTCDate() - dayOfWeek);
-  // CHANGED: UTC offset for Central Time (CDT is UTC-5)
   endOfLastWeek.setUTCHours(5, 0, 0, 0); // 5 AM UTC = Midnight CDT
 
   const startOfLastWeek = new Date(endOfLastWeek);
@@ -203,17 +199,17 @@ exports.backfillLastWinner = onCall(async (request) => {
   return { success: true, message: "Backfill complete." };
 });
 
+// --- KUDOS NOTIFICATION FUNCTION ---
 exports.sendKudosNotification = onDocumentCreated(
   "/runs/{runId}/kudos/{kudoId}",
   async (event) => {
-    // The v2 event object contains all the info we need.
     const kudoData = event.data.data(); // Contains { giverId, giverName }
     const runId = event.params.runId;
 
     // 1. Get the run document to find out who the owner is
     const runDoc = await db.collection("runs").doc(runId).get();
     if (!runDoc.exists) {
-      return log("Run document not found.");
+      return log(`Run document not found for runId: ${runId}`);
     }
     const runData = runDoc.data();
     const runOwnerId = runData.userId;
@@ -223,12 +219,25 @@ exports.sendKudosNotification = onDocumentCreated(
       return log("User gave kudos to their own run. No notification sent.");
     }
 
+    // --- ARTIFICIAL DELAY TO HANDLE EVENTUAL CONSISTENCY ---
+    log(
+      `Waiting for 2 seconds to allow for data propagation for user: ${runOwnerId}`
+    );
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    log("Wait complete. Now querying for tokens.");
+    // --- END OF DELAY ---
+
     // 2. Get the FCM tokens of the run owner
     const tokensSnapshot = await db
       .collection(`users/${runOwnerId}/fcmTokens`)
       .get();
+
+    log(
+      `Query complete. Found ${tokensSnapshot.size} tokens for user: ${runOwnerId}`
+    );
+
     if (tokensSnapshot.empty) {
-      return log("No FCM tokens found for user:", runOwnerId);
+      return log("No FCM tokens found for user after waiting:", runOwnerId);
     }
     const tokens = tokensSnapshot.docs.map((doc) => doc.id);
 
@@ -242,8 +251,6 @@ exports.sendKudosNotification = onDocumentCreated(
         icon: "/icons/icon-192x192.png",
       },
       data: {
-        // This URL will be opened when the notification is clicked
-        // You can make this a deep link to the specific run later
         url: "/",
       },
     };
@@ -252,8 +259,6 @@ exports.sendKudosNotification = onDocumentCreated(
     try {
       const response = await getMessaging().sendToDevice(tokens, payload);
       log("Successfully sent message:", response);
-      // Optional: Clean up tokens that are no longer valid
-      // You can add logic here to check the response for failed tokens and delete them
     } catch (error) {
       log("Error sending message:", error);
     }
