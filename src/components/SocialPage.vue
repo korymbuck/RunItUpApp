@@ -103,6 +103,14 @@
               <h2>
                 {{ new Date(friend.stats.lastRun.date).toLocaleDateString() }}
               </h2>
+
+              <ion-button
+                fill="clear"
+                class="kudos-button"
+                @click="$emit('giveKudos', friend)"
+              >
+                <ion-icon slot="icon-only" :icon="heartOutline"></ion-icon>
+              </ion-button>
             </div>
             <p v-if="friend.stats.lastRun.description" class="run-description">
               "{{ friend.stats.lastRun.description }}"
@@ -194,6 +202,7 @@ import {
   logInOutline,
   personAddOutline,
   peopleCircleOutline,
+  heartOutline,
 } from "ionicons/icons";
 
 defineProps({
@@ -213,6 +222,7 @@ defineEmits([
   "openCreateClubModal",
   "openJoinClubModal",
   "openRunClubDetailModal",
+  "giveKudos",
 ]);
 </script>
 
@@ -342,6 +352,22 @@ defineEmits([
   margin-top: 1rem;
 }
 
+.kudos-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+
+  --color: #f87171;
+  --color-activated: #ef4444;
+  font-size: 1.2rem;
+  height: 32px;
+  width: 32px;
+  margin: 0;
+  --padding-start: 0;
+  --padding-end: 0;
+}
+
 /* DIVIDER */
 .stats-divider {
   display: flex;
@@ -366,8 +392,14 @@ defineEmits([
 
 /* LATEST RUN */
 .run-history-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   margin-bottom: 0.5rem;
 }
+
 .run-history-header h2 {
   color: #ffffff;
   font-size: 1.25rem;

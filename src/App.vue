@@ -1378,6 +1378,38 @@ function cancelHoldStop() {
   );
 }
 
+async function handleGiveKudos(friend) {
+  // Guard clauses to prevent errors
+  if (
+    !user.value ||
+    !friend.stats ||
+    !friend.stats.lastRun ||
+    !friend.stats.lastRun.id
+  ) {
+    console.error("Missing data to give kudos.");
+    return presentToast("Could not give kudos to this run.", "danger");
+  }
+
+  const runId = friend.stats.lastRun.id;
+  const giverId = user.value.uid;
+  const giverName = displayName.value;
+
+  // Use the giver's UID as the document ID to prevent them from giving kudos more than once.
+  const kudoDocRef = doc(db, `runs/${runId}/kudos`, giverId);
+
+  try {
+    await setDoc(kudoDocRef, {
+      giverId: giverId,
+      giverName: giverName,
+      createdAt: new Date(),
+    });
+    await presentToast(`Kudos given to ${friend.displayName}!`, "success");
+  } catch (error) {
+    console.error("Error giving kudos:", error);
+    await presentToast("An error occurred. Please try again.", "danger");
+  }
+}
+
 // --- FIREBASE METHODS --
 async function handleSignIn() {
   authMessage.value = "";
@@ -1593,6 +1625,7 @@ async function updateUserStatsInFirestore() {
         xp: xp.value,
         lastRun: lastRun
           ? {
+              id: lastRun.id,
               distance: lastRun.distance,
               time: lastRun.time,
               pace: lastRun.pace,
@@ -2264,6 +2297,7 @@ onUnmounted(() => {
 
             <SocialPage
               v-if="currentPage === 'social'"
+              @give-kudos="handleGiveKudos"
               :friends="friends"
               :sortedFriends="sortedFriends"
               :formatTime="formatTime"
