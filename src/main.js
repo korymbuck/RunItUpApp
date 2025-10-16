@@ -26,8 +26,9 @@ app.use(IonicVue);
 // PWA Service Worker Registration
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
+    // CHANGE THIS LINE
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/firebase-messaging-sw.js") // <--- POINT TO THE FIREBASE SW
       .then((registration) => {
         console.log(
           "Service Worker registered with scope:",
