@@ -212,6 +212,10 @@ const isHoldingStop = ref(false);
 const holdProgress = ref(0);
 let holdTimer = null;
 let progressInterval = null;
+//Pause State
+const isPaused = ref(false);
+const totalPauseDuration = ref(0); // in milliseconds
+const pauseStartTime = ref(null);
 
 // --- NEW SHOE FEATURE STATE ---
 const userShoes = ref([]);
@@ -974,7 +978,6 @@ function startWorkout() {
   }
   if (!isTracking.value && navigator.geolocation) {
     isInitializingGPS.value = true;
-
     // 1. Get an initial, accurate position. This also handles permissions.
     navigator.geolocation.getCurrentPosition(
       (initialPosition) => {
@@ -999,7 +1002,7 @@ function startWorkout() {
           map.setView(latlng, 16);
         }
 
-        // 2. Start the 3-second countdown
+        //  Start the 3-second countdown
         countdownInterval = setInterval(() => {
           countdownValue.value -= 1;
           if (countdownValue.value <= 0) {
@@ -1007,7 +1010,12 @@ function startWorkout() {
             countdownInterval = null;
             isCountingDown.value = false;
 
-            // 3. Start the actual run tracking and timer
+            // Reset pause state for new run
+            isPaused.value = false;
+            totalPauseDuration.value = 0;
+            pauseStartTime.value = null;
+
+            //  Start the actual run tracking and timer
             isTracking.value = true;
             startTime = Date.now();
             elapsedTime.value = 0;
@@ -1144,6 +1152,32 @@ async function stopWorkout() {
   currentPace.value = 0;
   lastPosition = null;
   startTime = null;
+}
+
+function pauseWorkout() {
+  if (!isTracking.value || isPaused.value) return;
+  if (navigator.vibrate) navigator.vibrate(50);
+  isPaused.value = true;
+  clearInterval(timerInterval);
+  pauseStartTime.value = Date.now();
+}
+
+function resumeWorkout() {
+  if (!isTracking.value || !isPaused.value) return;
+  if (navigator.vibrate) navigator.vibrate(50);
+
+  const pausedFor = Date.now() - pauseStartTime.value;
+  totalPauseDuration.value += pausedFor;
+
+  isPaused.value = false;
+  pauseStartTime.value = null;
+  lastPosition = null; // Prevent distance jump after resuming
+
+  timerInterval = setInterval(() => {
+    elapsedTime.value = Math.floor(
+      (Date.now() - startTime - totalPauseDuration.value) / 1000
+    );
+  }, 1000);
 }
 
 async function logRun() {
@@ -2727,20 +2761,44 @@ onUnmounted(() => {
                   </li>
                 </transition-group>
               </div>
-              <!-- Hold to Stop Button -->
-              <div
-                class="hold-to-stop-button ion-margin-top"
-                @mousedown="startHoldStop"
-                @mouseup="cancelHoldStop"
-                @mouseleave="cancelHoldStop"
-                @touchstart.prevent="startHoldStop"
-                @touchend="cancelHoldStop"
-              >
+
+              <!-- Action Buttons -->
+              <div class="tracking-buttons-container">
+                <!-- Conditional Pause Button -->
+                <ion-button
+                  v-if="!isPaused"
+                  @click="pauseWorkout"
+                  color="warning"
+                  class="tracking-action-button"
+                >
+                  PAUSE
+                </ion-button>
+
+                <!-- Conditional Resume Button -->
+                <ion-button
+                  v-if="isPaused"
+                  @click="resumeWorkout"
+                  color="success"
+                  class="tracking-action-button"
+                >
+                  RESUME
+                </ion-button>
+
+                <!-- Hold to Stop Button -->
                 <div
-                  class="hold-progress"
-                  :style="{ transform: `scaleX(${holdProgress})` }"
-                ></div>
-                <span class="hold-text">HOLD TO STOP</span>
+                  class="hold-to-stop-button"
+                  @mousedown="startHoldStop"
+                  @mouseup="cancelHoldStop"
+                  @mouseleave="cancelHoldStop"
+                  @touchstart.prevent="startHoldStop"
+                  @touchend="cancelHoldStop"
+                >
+                  <div
+                    class="hold-progress"
+                    :style="{ transform: `scaleX(${holdProgress})` }"
+                  ></div>
+                  <span class="hold-text">STOP (HOLD)</span>
+                </div>
               </div>
             </div>
           </ion-card-content>
@@ -3929,6 +3987,23 @@ ion-spinner {
   z-index: 1;
 }
 
+.tracking-action-button {
+  --border-radius: 12px;
+  height: 60px;
+  width: 100%;
+  flex-grow: 1;
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin: 0; /* Important for flexbox alignment */
+}
+
+.tracking-buttons-container {
+  display: flex;
+  justify-content: center; /* Changed from space-around */
+  align-items: center;
+  margin-top: 1.5rem;
+  gap: 1rem;
+}
 /* Forgot Password Link */
 .forgot-password-link {
   text-align: center;
